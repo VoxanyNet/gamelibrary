@@ -131,19 +131,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 
 [[package]]
-name = "core_lib"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "diff-struct",
- "macroquad",
- "nalgebra",
- "rapier2d",
- "serde",
- "uuid",
-]
-
-[[package]]
 name = "crc32fast"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -269,6 +256,19 @@ checksum = "0793f5137567643cf65ea42043a538804ff0fbf288649e2141442b602d81f9bc"
 dependencies = [
  "hashbrown 0.13.2",
  "ttf-parser",
+]
+
+[[package]]
+name = "gamelibrary"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diff-struct",
+ "macroquad",
+ "nalgebra",
+ "rapier2d",
+ "serde",
+ "uuid",
 ]
 
 [[package]]
