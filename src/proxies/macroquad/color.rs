@@ -1,7 +1,10 @@
 //! Color types and helpers.
 
+use colors::{BLUE, DARKBLUE, GOLD, GRAY, GREEN, LIGHTGRAY, LIME, MAROON, ORANGE, PINK, RED, YELLOW};
 use diff::Diff;
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use rand::prelude::SliceRandom;
 
 
 /// A color represented by 4 floats: red, green, blue and alpha.
