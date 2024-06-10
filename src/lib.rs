@@ -7,6 +7,7 @@ pub mod rigid_body;
 pub mod collider;
 pub mod space;
 pub mod traits;
+pub mod menu;
 
 pub fn uuid() -> String {
     // AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
