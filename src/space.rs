@@ -3,11 +3,11 @@ use std::collections::HashMap;
 
 
 use diff::Diff;
-use nalgebra::vector;
-use rapier2d::{dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodySet}, geometry::{BroadPhase, ColliderSet, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}};
+use nalgebra::{point, vector};
+use rapier2d::{dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodySet}, geometry::{BroadPhase, ColliderSet, NarrowPhase}, pipeline::{PhysicsPipeline, QueryFilter, QueryPipeline}};
 use serde::{Deserialize, Serialize};
 
-use crate::rigid_body::RigidBody;
+use crate::{proxies::macroquad::math::vec2::Vec2, rigid_body::RigidBody};
 
 pub type RigidBodyHandle = String;
 pub type ColliderHandle = String;
@@ -25,9 +25,49 @@ impl Space {
 
     pub fn new(gravity: f32) -> Self {
         Self {
+            // we should probably seperate colliders and rigid bodies 
             rigid_bodies: HashMap::new(),
             gravity: gravity // we should probably move this elsewhere? i feel like this struct should only act as a wrapper for the rigid body set
         }
+    }
+
+    pub fn query_point(&mut self, point: Vec2) -> Vec<RigidBodyHandle> {
+        // return a vector of rigid body handles that contains the point
+        
+        // convert proxy types to real types
+        let (rigid_body_set, collider_set, proxy_map) = self.get_rigid_body_set();
+
+        let mut query_pipeline = QueryPipeline::default();
+
+        query_pipeline.update(&rigid_body_set, &collider_set);
+
+        let point = point![point.x, point.y];
+        let filter = QueryFilter::default();
+
+        // vector containing all rigid bodies that contain the point
+        let mut matching_bodies = vec![];
+
+
+        query_pipeline.intersections_with_point(&rigid_body_set, &collider_set, &point, filter, |handle| {
+            // Callback called on each collider with a shape containing the point.
+
+            // search through all proxies to find the one with a matching
+            // this is really badly optimized
+            for (proxy_handle, (rigid_body_handle, collider_handle)) in proxy_map.clone() {
+                if collider_handle == handle {
+                    matching_bodies.push(proxy_handle);
+
+                    break
+                }
+            }
+
+            // Return `false` instead if we want to stop searching for other colliders containing this point.
+            true
+        }
+        );
+
+        matching_bodies
+
     }
 
     pub fn get_rigid_body_set(&mut self) -> (RigidBodySet, ColliderSet, HashMap<RigidBodyHandle, (rapier2d::dynamics::RigidBodyHandle, rapier2d::geometry::ColliderHandle)>) {
