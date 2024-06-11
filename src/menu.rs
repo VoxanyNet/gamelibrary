@@ -40,6 +40,10 @@ impl Menu {
 
     }
 
+    pub fn get_menu_items(&self) -> &Vec<MenuItem> {
+        &self.items
+    }
+
     pub fn add_button(&mut self, text: String) {
 
         self.items.push(
@@ -73,7 +77,7 @@ impl Menu {
 #[diff(attr(
     #[derive(Serialize, Deserialize)]
 ))]
-struct MenuItem {
+pub struct MenuItem {
     rect: Rect,
     text: String,
     hovered: bool,
