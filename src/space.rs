@@ -26,32 +26,18 @@ impl Space {
     pub fn new(gravity: f32) -> Self {
         Self {
             rigid_bodies: HashMap::new(),
-            gravity: gravity
+            gravity: gravity // we should probably move this elsewhere? i feel like this struct should only act as a wrapper for the rigid body set
         }
     }
 
-    pub fn step(&mut self, owner: &String) {
-        // convert all of the rigid bodies proxies to the actual rapier rigid body, step them all, then update the proxies using their real counterparts 
+    pub fn get_rigid_body_set(&mut self) -> (RigidBodySet, ColliderSet, HashMap<RigidBodyHandle, (rapier2d::dynamics::RigidBodyHandle, rapier2d::geometry::ColliderHandle)>) {
+        // maps proxy handles to their real rigid bodies and colliders
 
         // this maps the rigid body proxy handles to the handles for their real rigid bodies and proxies, so the proxy types can be updated after they are stepped
         let mut rigid_body_map: HashMap<RigidBodyHandle, (rapier2d::dynamics::RigidBodyHandle, rapier2d::geometry::ColliderHandle)> = HashMap::new();
 
-        // create all of the temporary structs needed to step the rigid bodies
-        let gravity = vector![0., self.gravity];
-        let integration_parameters = IntegrationParameters::default();
-        let mut island_manager = IslandManager::default();
-        let mut broad_phase = BroadPhase::new();
-        let mut narrow_phase = NarrowPhase::new();
         let mut rigid_body_set = RigidBodySet::new();
         let mut collider_set = ColliderSet::new();
-        let mut impulse_joint_set = ImpulseJointSet::new();
-        let mut multibody_joint_set = MultibodyJointSet::new();
-        let mut ccd_solver = CCDSolver::new();
-        let mut query_pipeline = QueryPipeline::new();
-        let physics_hooks = ();
-        let event_handler = ();
-
-        let mut physics_pipeline = PhysicsPipeline::new();
 
         for (rigid_body_proxy_handle, rigid_body_proxy) in self.rigid_bodies.iter_mut() {
             let rigid_body: rapier2d::dynamics::RigidBody = rigid_body_proxy.clone().into();
@@ -62,6 +48,36 @@ impl Space {
 
             rigid_body_map.insert(rigid_body_proxy_handle.clone(), (rigid_body_handle, collider_handle));
         }
+
+        (
+            rigid_body_set,
+            collider_set,
+            rigid_body_map
+        )
+
+    }      
+
+    pub fn step(&mut self, owner: &String) {
+        // convert all of the rigid bodies proxies to the actual rapier rigid body, step them all, then update the proxies using their real counterparts 
+        
+
+        // create all of the temporary structs needed to step the rigid bodies
+        let gravity = vector![0., self.gravity];
+        let integration_parameters = IntegrationParameters::default();
+        let mut island_manager = IslandManager::default();
+        let mut broad_phase = BroadPhase::new();
+        let mut narrow_phase = NarrowPhase::new();
+        let mut impulse_joint_set = ImpulseJointSet::new();
+        let mut multibody_joint_set = MultibodyJointSet::new();
+        let mut ccd_solver = CCDSolver::new();
+        let mut query_pipeline = QueryPipeline::new();
+        let physics_hooks = ();
+        let event_handler = ();
+
+        let mut physics_pipeline = PhysicsPipeline::new();
+
+        // get the real rigid bodies and colliders from the proxies
+        let (mut rigid_body_set, mut collider_set, rigid_body_map) = self.get_rigid_body_set();
     
         physics_pipeline.step(
             &gravity,
