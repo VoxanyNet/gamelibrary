@@ -176,8 +176,8 @@ pub trait HasRigidBody: Color {
         let rigid_body = space.get_rigid_body(rigid_body_handle).expect("Invalid rigid body handle");
 
         macroquad::shapes::draw_rectangle_ex(
-            rigid_body.position.x + rigid_body.collider.hx, 
-            ((rigid_body.position.y + rigid_body.collider.hy) * -1.) + screen_height(), 
+            rigid_body.position.x, 
+            ((rigid_body.position.y) * -1.) + screen_height(), 
             rigid_body.collider.hx * 2., 
             rigid_body.collider.hy * 2., 
             DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rigid_body.rotation * -1., color: self.color().into() }
