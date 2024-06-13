@@ -78,11 +78,11 @@ impl Menu {
     #[derive(Serialize, Deserialize)]
 ))]
 pub struct MenuItem {
-    rect: Rect,
-    text: String,
-    hovered: bool,
-    clicked: bool,
-    color: Color
+    pub rect: Rect,
+    pub text: String,
+    pub hovered: bool,
+    pub clicked: bool,
+    pub color: Color
 }
 
 impl MenuItem {
