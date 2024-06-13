@@ -112,7 +112,7 @@ impl MenuItem {
 
             self.hovered = true;
 
-            if input::is_mouse_button_pressed(input::MouseButton::Left) != true {
+            if input::is_mouse_button_pressed(input::MouseButton::Left) {
                 self.clicked = true;
             }
         }
