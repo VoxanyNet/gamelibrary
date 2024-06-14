@@ -68,7 +68,7 @@ impl Menu {
             item.draw().await;
         }
 
-        draw_rectangle_lines(self.containing_rect.x, self.containing_rect.y, self.containing_rect.w, self.containing_rect.h, 3., RED);
+        draw_rectangle_lines(self.containing_rect.x, self.containing_rect.y, self.containing_rect.w, self.containing_rect.h, 3., WHITE);
 
     }
 }
