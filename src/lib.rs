@@ -1,6 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use macroquad::{math::Vec2, window::screen_height};
+use macroquad::window::screen_height;
+use proxies::macroquad::math::vec2::Vec2;
 
 pub mod timeline;
 pub mod proxies;
