@@ -204,8 +204,8 @@ pub trait HasRigidBody: Color {
 
         if *self.get_selected() {
             macroquad::shapes::draw_rectangle_lines(
-                rigid_body.position.x, 
-                ((rigid_body.position.y) * -1.) + screen_height(), 
+                rigid_body.position.x - rigid_body.collider.hx, 
+                (((rigid_body.position.y) * -1.) + screen_height()) + rigid_body.collider.hy, 
                 rigid_body.collider.hx * 2., 
                 rigid_body.collider.hy * 2., 
                 3., 
