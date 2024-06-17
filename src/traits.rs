@@ -3,13 +3,14 @@ use std::collections::HashMap;
 use chrono::TimeDelta;
 use macroquad::audio::{self, load_sound};
 use macroquad::color::{RED, WHITE};
-use macroquad::input::{self};
+use macroquad::input::{self, is_mouse_button_released, mouse_position};
 use macroquad::shapes::DrawRectangleParams;
 use macroquad::texture::{self, load_texture, Texture2D};
 use macroquad::window::screen_height;
 
 use crate::proxies::macroquad::{input::KeyCode, math::{vec2::Vec2, rect::Rect}};
 use crate::space::{RigidBodyHandle, Space};
+use crate::translate_coordinates;
 
 pub trait Velocity {
     fn get_velocity(&self) -> Vec2;
@@ -170,6 +171,24 @@ pub trait Drawable: HasRect + Color {
 
 pub trait HasRigidBody: Color {
     fn get_rigid_body_handle(&self) -> &RigidBodyHandle;
+    fn get_selected(&mut self) -> &mut bool;
+
+    fn update_selected(&mut self, space: &mut Space) {
+        if !is_mouse_button_released(input::MouseButton::Left) {
+            return;
+        }
+
+        if space.query_point(
+            translate_coordinates(&Vec2::new(mouse_position().0, mouse_position().1)).into()
+        ).contains(self.get_rigid_body_handle()) {
+            *self.get_selected() = true;
+        }
+
+        else {
+            *self.get_selected() = false;
+        }         
+        
+    }
 
     async fn draw(&mut self, camera_offset: &Vec2, space: &Space) {
         let rigid_body_handle = self.get_rigid_body_handle();
@@ -181,7 +200,18 @@ pub trait HasRigidBody: Color {
             rigid_body.collider.hx * 2., 
             rigid_body.collider.hy * 2., 
             DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rigid_body.rotation * -1., color: self.color().into() }
-        )
+        );
+
+        if *self.get_selected() {
+            macroquad::shapes::draw_rectangle_lines(
+                rigid_body.position.x, 
+                ((rigid_body.position.y) * -1.) + screen_height(), 
+                rigid_body.collider.hx * 2., 
+                rigid_body.collider.hy * 2., 
+                3., 
+                WHITE
+            )
+        } 
     }
 }
 
