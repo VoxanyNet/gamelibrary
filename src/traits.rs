@@ -1,15 +1,16 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
 use chrono::TimeDelta;
 use macroquad::audio::{self, load_sound};
-use macroquad::color::{RED, WHITE};
-use macroquad::input::{self, is_mouse_button_released, mouse_position};
+use macroquad::color::{GREEN, RED, WHITE};
+use macroquad::input::{self, is_mouse_button_down, is_mouse_button_released, mouse_position};
 use macroquad::shapes::DrawRectangleParams;
 use macroquad::texture::{self, load_texture, Texture2D};
 use macroquad::window::screen_height;
 
 use crate::proxies::macroquad::{input::KeyCode, math::{vec2::Vec2, rect::Rect}};
-use crate::space::{RigidBodyHandle, Space};
+use crate::space::{self, RigidBodyHandle, Space};
 use crate::translate_coordinates;
 
 pub trait Velocity {
@@ -160,7 +161,7 @@ pub trait HasRect {
 
 
 pub trait Color {
-    fn color(&self) -> crate::proxies::macroquad::color::Color;
+    fn color(&mut self) -> &mut crate::proxies::macroquad::color::Color;
 }
 
 pub trait Drawable: HasRect + Color {
@@ -172,6 +173,8 @@ pub trait Drawable: HasRect + Color {
 pub trait HasRigidBody: Color {
     fn get_rigid_body_handle(&self) -> &RigidBodyHandle;
     fn get_selected(&mut self) -> &mut bool;
+    fn get_dragging(&mut self) -> &mut bool; // structure is currently being dragged
+    fn get_drag_offset(&mut self) -> &mut Option<Vec2>; // when dragging the body, we teleport the body to the mouse plus this offset
 
     fn update_selected(&mut self, space: &mut Space) {
         if !is_mouse_button_released(input::MouseButton::Left) {
@@ -186,13 +189,90 @@ pub trait HasRigidBody: Color {
 
         else {
             *self.get_selected() = false;
-        }         
+        }
         
+    }
+
+    fn update_drag(&mut self, space: &mut Space) {
+        if !*self.get_dragging() {
+            return
+        }
+
+        let drag_offset = self.get_drag_offset().unwrap(); // there shouldn't be a situation where get_dragging returns true and there is no drag offset
+
+        println!("{}, {}", drag_offset.x, drag_offset.y);
+
+        let rigid_body = space.get_rigid_body_mut(self.get_rigid_body_handle()).unwrap();
+
+        let mouse_pos = translate_coordinates(
+            &Vec2::new(mouse_position().0, mouse_position().1)
+        );
+
+        rigid_body.position = mouse_pos - drag_offset;
+
+        
+    }
+
+    fn update_is_dragging(&mut self, space: &mut Space) {
+
+        if *self.get_dragging() {
+            *self.color() = GREEN.into();
+        }
+
+        else {
+            *self.color() = RED.into();
+        }
+
+        if !*self.get_selected() {
+            *self.get_dragging() = false;
+            *self.get_drag_offset() = None;
+            return
+        }
+
+        if !is_mouse_button_down(input::MouseButton::Left) {
+            *self.get_dragging() = false;
+            *self.get_drag_offset() = None;
+            return
+        }
+
+        let mouse_pos = translate_coordinates(
+            &Vec2::new(mouse_position().0, mouse_position().1)
+        );
+
+        // if the body does not contain the mouse, but the button is down, we just dont do anything, because this is still a valid dragging state IF we are already dragging
+        if !space.query_point(mouse_pos).contains(self.get_rigid_body_handle()) {
+            return
+        }
+
+        // at this point we know we will update dragging to true, but we want to check if this is a change from the last tick, so that we can set the mouse offset only when we begin dragging
+        if !*self.get_dragging() {
+
+            let rigid_body = space.get_rigid_body(self.get_rigid_body_handle()).unwrap();
+
+            *self.get_drag_offset() = Some(
+                Vec2::new(mouse_pos.x - rigid_body.position.x, mouse_pos.y - rigid_body.position.y)
+            );
+        }
+
+        *self.get_dragging() = true;
+
+        
+
     }
 
     async fn draw(&mut self, camera_offset: &Vec2, space: &Space) {
         let rigid_body_handle = self.get_rigid_body_handle();
         let rigid_body = space.get_rigid_body(rigid_body_handle).expect("Invalid rigid body handle");
+
+        if *self.get_selected() {
+            macroquad::shapes::draw_rectangle_ex(
+                rigid_body.position.x, 
+                ((rigid_body.position.y) * -1.) + screen_height(), 
+                rigid_body.collider.hx * 2.5, 
+                rigid_body.collider.hy * 2.5, 
+                DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rigid_body.rotation * -1., color: WHITE }
+            );
+        } 
 
         macroquad::shapes::draw_rectangle_ex(
             rigid_body.position.x, 
@@ -202,16 +282,6 @@ pub trait HasRigidBody: Color {
             DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rigid_body.rotation * -1., color: self.color().into() }
         );
 
-        if *self.get_selected() {
-            macroquad::shapes::draw_rectangle_lines(
-                rigid_body.position.x - rigid_body.collider.hx, 
-                (((rigid_body.position.y) * -1.) + screen_height()) - rigid_body.collider.hy, 
-                rigid_body.collider.hx * 2., 
-                rigid_body.collider.hy * 2., 
-                3., 
-                WHITE
-            )
-        } 
     }
 }
 
