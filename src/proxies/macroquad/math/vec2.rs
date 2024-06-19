@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Mul, Neg};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 
 use diff::Diff;
 use serde::{Deserialize, Serialize};
@@ -116,6 +116,19 @@ impl Add<Vec2> for Vec2 {
         let rhs_parent: macroquad::math::Vec2 = rhs.into();
 
         let parent_result = parent.add(rhs_parent);
+
+        parent_result.into()
+    }
+    
+    type Output = Vec2;
+}
+
+impl Sub<Vec2> for Vec2 {
+    fn sub(self, rhs: Vec2) -> Self::Output {
+        let parent: macroquad::math::Vec2 = self.into();
+        let rhs_parent: macroquad::math::Vec2 = rhs.into();
+
+        let parent_result = parent.sub(rhs_parent);
 
         parent_result.into()
     }
