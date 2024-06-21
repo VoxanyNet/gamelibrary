@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use chrono::TimeDelta;
 use macroquad::audio::{self, load_sound};
-use macroquad::color::{GREEN, RED, WHITE};
+use macroquad::color::{GREEN, ORANGE, RED, WHITE};
 use macroquad::input::{self, is_mouse_button_down, is_mouse_button_released, mouse_position};
 use macroquad::shapes::DrawRectangleParams;
 use macroquad::texture::{self, load_texture, Texture2D};
@@ -11,7 +11,7 @@ use macroquad::window::screen_height;
 
 use crate::proxies::macroquad::{input::KeyCode, math::{vec2::Vec2, rect::Rect}};
 use crate::space::{self, RigidBodyHandle, Space};
-use crate::translate_coordinates;
+use crate::{macroquad_to_rapier, rapier_to_macroquad};
 
 pub trait Velocity {
     fn get_velocity(&self) -> Vec2;
@@ -170,11 +170,63 @@ pub trait Drawable: HasRect + Color {
     }
 }
 
+pub struct ResizeHandles {
+    top_left: Rect,
+    top_right: Rect,
+    bottom_left: Rect,
+    bottom_right: Rect
+}
+
 pub trait HasRigidBody: Color {
     fn get_rigid_body_handle(&self) -> &RigidBodyHandle;
     fn get_selected(&mut self) -> &mut bool;
     fn get_dragging(&mut self) -> &mut bool; // structure is currently being dragged
     fn get_drag_offset(&mut self) -> &mut Option<Vec2>; // when dragging the body, we teleport the body to the mouse plus this offset
+    fn get_resize_handles(&mut self) -> &mut [Rect; 4];
+
+    // ya know just use the offset thing they prob shouldnt be idk ocd i FUCKING hate it
+    fn update_resize_handles(&mut self, space: &mut Space) {
+
+        let body = space.get_rigid_body(self.get_rigid_body_handle()).unwrap();
+
+        let translated_body_position = rapier_to_macroquad(&body.position);
+
+        // create all 4 corners for resizing
+
+        // top left
+        self.get_resize_handles()[0] = Rect::new(
+            translated_body_position.x - body.collider.hx, 
+            translated_body_position.y - body.collider.hy, 
+            10., 
+            10.
+        );
+
+        // top right
+        self.get_resize_handles()[1] = Rect::new(
+            translated_body_position.x + body.collider.hx, 
+            translated_body_position.y - body.collider.hy, 
+            10., 
+            10.
+        );
+
+        // bottom left
+        self.get_resize_handles()[2] = Rect::new(
+            translated_body_position.x - body.collider.hx, 
+            translated_body_position.y + body.collider.hy, 
+            10., 
+            10.
+        );
+
+        // bottom right
+        self.get_resize_handles()[3] = Rect::new(
+            translated_body_position.x + body.collider.hx, 
+            translated_body_position.y + body.collider.hy, 
+            10., 
+            10.
+        );
+        
+        
+    }
 
     fn update_selected(&mut self, space: &mut Space) {
         if !is_mouse_button_released(input::MouseButton::Left) {
@@ -182,7 +234,7 @@ pub trait HasRigidBody: Color {
         }
 
         if space.query_point(
-            translate_coordinates(&Vec2::new(mouse_position().0, mouse_position().1)).into()
+            macroquad_to_rapier(&Vec2::new(mouse_position().0, mouse_position().1)).into()
         ).contains(self.get_rigid_body_handle()) {
             *self.get_selected() = true;
         }
@@ -200,11 +252,9 @@ pub trait HasRigidBody: Color {
 
         let drag_offset = self.get_drag_offset().unwrap(); // there shouldn't be a situation where get_dragging returns true and there is no drag offset
 
-        println!("{}, {}", drag_offset.x, drag_offset.y);
-
         let rigid_body = space.get_rigid_body_mut(self.get_rigid_body_handle()).unwrap();
 
-        let mouse_pos = translate_coordinates(
+        let mouse_pos = macroquad_to_rapier(
             &Vec2::new(mouse_position().0, mouse_position().1)
         );
 
@@ -235,7 +285,7 @@ pub trait HasRigidBody: Color {
             return
         }
 
-        let mouse_pos = translate_coordinates(
+        let mouse_pos = macroquad_to_rapier(
             &Vec2::new(mouse_position().0, mouse_position().1)
         );
 
@@ -281,6 +331,18 @@ pub trait HasRigidBody: Color {
             rigid_body.collider.hy * 2., 
             DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rigid_body.rotation * -1., color: self.color().into() }
         );
+
+        for resize_handle in self.get_resize_handles() {
+            // draw the resize handles
+            macroquad::shapes::draw_rectangle_ex(
+                rigid_body.position.x, 
+                rigid_body.position.y, 
+                resize_handle.w, 
+                resize_handle.h, 
+                DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rigid_body.rotation * -1., color: ORANGE }
+            )
+        }
+        
 
     }
 }

@@ -18,10 +18,17 @@ pub fn uuid() -> String {
     macroquad::rand::rand().to_string()
 }
 
-pub fn translate_coordinates(macroquad_coords: &Vec2) -> Vec2 {
+pub fn macroquad_to_rapier(macroquad_coords: &Vec2) -> Vec2 {
     // translate macroquad coords to rapier coords
     Vec2 { 
         x: macroquad_coords.x, 
         y: (macroquad_coords.y * -1.) + screen_height()
+    }
+}
+
+pub fn rapier_to_macroquad(rapier_coords: &Vec2) -> Vec2 {
+    Vec2 {
+        x: rapier_coords.x,
+        y: (rapier_coords.y * -1.) + screen_height()
     }
 }
