@@ -7,7 +7,7 @@ use nalgebra::{point, vector};
 use rapier2d::{dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodySet}, geometry::{BroadPhase, ColliderSet, NarrowPhase}, pipeline::{PhysicsPipeline, QueryFilter, QueryPipeline}};
 use serde::{Deserialize, Serialize};
 
-use crate::{proxies::macroquad::math::vec2::Vec2, rigid_body::RigidBody};
+use crate::{collider::Collider, proxies::macroquad::math::vec2::Vec2, rigid_body::RigidBody};
 
 pub type RigidBodyHandle = String;
 pub type ColliderHandle = String;
@@ -18,6 +18,7 @@ pub type ColliderHandle = String;
 ))]
 pub struct Space {
     rigid_bodies: HashMap<RigidBodyHandle, RigidBody>,
+    colliders: HashMap<ColliderHandle, Collider>,
     gravity: f32
 }
 
@@ -27,15 +28,17 @@ impl Space {
         Self {
             // we should probably seperate colliders and rigid bodies 
             rigid_bodies: HashMap::new(),
+            colliders: HashMap::new(),
             gravity: gravity // we should probably move this elsewhere? i feel like this struct should only act as a wrapper for the rigid body set
         }
     }
 
-    pub fn query_point(&mut self, point: Vec2) -> Vec<RigidBodyHandle> {
-        // return a vector of rigid body handles that contains the point
+    pub fn query_point(&mut self, point: Vec2) -> Vec<ColliderHandle> {
+        // return a vector of collider handles that contains the point
         
         // convert proxy types to real types
-        let (rigid_body_set, collider_set, proxy_map) = self.get_rigid_body_set();
+        let (rigid_body_set, rigid_body_proxy_map) = self.get_rigid_body_set();
+        let (collider_set, collider_proxy_map) = self.get_collider_set();
 
         let mut query_pipeline = QueryPipeline::default();
 
@@ -44,8 +47,8 @@ impl Space {
         let point = point![point.x, point.y];
         let filter = QueryFilter::default();
 
-        // vector containing all rigid bodies that contain the point
-        let mut matching_bodies = vec![];
+        // vector containing all colliders that contain the point
+        let mut matching_colliders = vec![];
 
 
         query_pipeline.intersections_with_point(&rigid_body_set, &collider_set, &point, filter, |handle| {
@@ -53,9 +56,9 @@ impl Space {
 
             // search through all proxies to find the one with a matching
             // this is really badly optimized
-            for (proxy_handle, (rigid_body_handle, collider_handle)) in proxy_map.clone() {
+            for (proxy_handle, collider_handle) in collider_proxy_map.clone() {
                 if collider_handle == handle {
-                    matching_bodies.push(proxy_handle);
+                    matching_colliders.push(proxy_handle);
 
                     break
                 }
@@ -66,35 +69,53 @@ impl Space {
         }
         );
 
-        matching_bodies
+        matching_colliders
 
     }
 
-    pub fn get_rigid_body_set(&mut self) -> (RigidBodySet, ColliderSet, HashMap<RigidBodyHandle, (rapier2d::dynamics::RigidBodyHandle, rapier2d::geometry::ColliderHandle)>) {
-        // maps proxy handles to their real rigid bodies and colliders
+    pub fn get_rigid_body_set(&mut self) -> (RigidBodySet, HashMap<RigidBodyHandle, rapier2d::dynamics::RigidBodyHandle>) {
+        // maps proxy handles to their real rigid bodies
 
         // this maps the rigid body proxy handles to the handles for their real rigid bodies and proxies, so the proxy types can be updated after they are stepped
-        let mut rigid_body_map: HashMap<RigidBodyHandle, (rapier2d::dynamics::RigidBodyHandle, rapier2d::geometry::ColliderHandle)> = HashMap::new();
+        let mut rigid_body_map: HashMap<RigidBodyHandle, rapier2d::dynamics::RigidBodyHandle> = HashMap::new();
 
         let mut rigid_body_set = RigidBodySet::new();
-        let mut collider_set = ColliderSet::new();
 
         for (rigid_body_proxy_handle, rigid_body_proxy) in self.rigid_bodies.iter_mut() {
             let rigid_body: rapier2d::dynamics::RigidBody = rigid_body_proxy.clone().into();
-            let collider: rapier2d::geometry::Collider = rigid_body_proxy.collider.clone().into();
 
             let rigid_body_handle = rigid_body_set.insert(rigid_body);
-            let collider_handle = collider_set.insert_with_parent(collider, rigid_body_handle, &mut rigid_body_set);
 
-            rigid_body_map.insert(rigid_body_proxy_handle.clone(), (rigid_body_handle, collider_handle));
+            rigid_body_map.insert(rigid_body_proxy_handle.clone(), rigid_body_handle);
         }
 
         (
             rigid_body_set,
-            collider_set,
             rigid_body_map
         )
 
+    }
+
+    pub fn get_collider_set(&mut self) -> (ColliderSet, HashMap<ColliderHandle, rapier2d::geometry::ColliderHandle>) {
+        // maps proxy handles to their real rigid bodies and colliders
+
+        // this maps the collider proxy handles to the handles for their real collider bodies, so the proxy types can be updated after they are stepped
+        let mut collider_map: HashMap<RigidBodyHandle, rapier2d::geometry::ColliderHandle> = HashMap::new();
+
+        let mut collider_set = ColliderSet::new();
+
+        for (collider_proxy_handle, collider_proxy) in self.colliders.iter_mut() {
+            let collider: rapier2d::geometry::Collider = collider_proxy.clone().into();
+
+            let collider_handle = collider_set.insert(collider);
+
+            collider_map.insert(collider_proxy_handle.clone(), collider_handle);
+        }
+
+        (
+            collider_set,
+            collider_map
+        )
     }      
 
     pub fn step(&mut self, owner: &String) {
@@ -117,7 +138,8 @@ impl Space {
         let mut physics_pipeline = PhysicsPipeline::new();
 
         // get the real rigid bodies and colliders from the proxies
-        let (mut rigid_body_set, mut collider_set, rigid_body_map) = self.get_rigid_body_set();
+        let (mut rigid_body_set, rigid_body_map) = self.get_rigid_body_set();
+        let (mut collider_set, collider_map) = self.get_collider_set();
     
         physics_pipeline.step(
             &gravity,
@@ -135,8 +157,8 @@ impl Space {
             &event_handler
         );
 
-        // update the proxies
-        for (rigid_body_proxy_handle, (rigid_body_handle, collider_handle)) in rigid_body_map {
+        // update the rigid body proxies
+        for (rigid_body_proxy_handle, rigid_body_handle) in rigid_body_map {
             
             let rigid_body_proxy = self.rigid_bodies.get_mut(&rigid_body_proxy_handle)
                 .expect("Invalid rigid body proxy handle");
@@ -152,18 +174,55 @@ impl Space {
 
             // update the rigid body proxy with the actual rigid body
             rigid_body_proxy.update_from_rigid_body(rigid_body);
+        }
 
+        // update the collider proxies
+        for (collider_proxy_handle, collider_handle) in collider_map {
+            
+            let collider_proxy = self.colliders.get_mut(&collider_proxy_handle)
+                .expect("Invalid collider proxy handle");
+
+            // we only update the proxy rigid type if we own it
+            if collider_proxy.owner != *owner {
+                continue;
+            }
+
+            // fetch the corresponding rigid body
             let collider = collider_set.get(collider_handle)
-                .expect("Invalid collider handle");
+                .expect("Invalid rigid body handle");
 
-            rigid_body_proxy.collider.update_from_collider(collider);
+            // update the rigid body proxy with the actual rigid body
+            collider_proxy.update_from_collider(collider);
         }
 
 
 
     }
+
+    pub fn insert_collider(&mut self, collider: Collider) -> ColliderHandle {
+        let handle: ColliderHandle = uuid::Uuid::new_v4().to_string();
+
+        self.colliders.insert(handle.clone(), collider);
+
+        handle
+    }
+
     pub fn insert_rigid_body(&mut self, rigid_body: RigidBody) -> RigidBodyHandle {
+
         let handle: RigidBodyHandle = uuid::Uuid::new_v4().to_string();
+
+        if !self.colliders.contains_key(&rigid_body.collider) {
+            panic!("specified collider does not exist")
+        }
+
+        // update the collider attached to the rigid body
+        for (collider_handle, collider) in &mut self.colliders {
+            if rigid_body.collider == *collider_handle {
+                collider.parent = Some(collider_handle.clone());
+                
+                break;
+            }
+        }
 
         self.rigid_bodies.insert(handle.clone(), rigid_body);
 
@@ -182,6 +241,18 @@ impl Space {
         let rigid_body = self.rigid_bodies.get(rigid_body_handle);
 
         rigid_body
+    }
+
+    pub fn get_collider_mut(&mut self, collider_handle: &ColliderHandle) -> Option<&mut Collider> {
+        let collider = self.colliders.get_mut(collider_handle);
+
+        collider
+    }
+
+    pub fn get_collider(&self, collider_handle: &ColliderHandle) -> Option<&Collider> {
+        let collider = self.colliders.get(collider_handle);
+
+        collider
     }
     
 }

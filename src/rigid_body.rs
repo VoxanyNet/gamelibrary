@@ -2,7 +2,7 @@ use diff::Diff;
 use rapier2d::{dynamics::RigidBodyBuilder, na::vector};
 use serde::{Deserialize, Serialize};
 
-use crate::{collider::Collider, proxies::macroquad::math::vec2::Vec2};
+use crate::{collider::Collider, proxies::macroquad::math::vec2::Vec2, space::ColliderHandle};
 
 #[derive(Serialize, Deserialize, Diff, PartialEq, Clone)]
 #[diff(attr(
@@ -37,7 +37,7 @@ pub struct RigidBody {
     pub velocity: Vec2,
     pub body_type: RigidBodyType,
     pub owner: String,
-    pub collider: Collider
+    pub collider: ColliderHandle
 }
 
 impl RigidBody {
