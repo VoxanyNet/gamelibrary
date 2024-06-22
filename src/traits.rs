@@ -178,6 +178,10 @@ pub struct ResizeHandles {
     bottom_right: Rect
 }
 
+pub trait HasRigidBody {
+    fn get_rigid_body_handle(&self) -> &RigidBodyHandle;
+}
+
 pub trait HasCollider: Color {
     fn get_collider_handle(&self) -> &ColliderHandle;
     fn get_selected(&mut self) -> &mut bool;
