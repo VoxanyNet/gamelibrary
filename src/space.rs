@@ -9,8 +9,21 @@ use serde::{Deserialize, Serialize};
 
 use crate::{collider::Collider, proxies::macroquad::math::vec2::Vec2, rigid_body::RigidBody};
 
-pub type RigidBodyHandle = String;
-pub type ColliderHandle = String;
+#[derive(Serialize, Deserialize, Diff, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
+#[diff(attr(
+    #[derive(Serialize, Deserialize)]
+))]
+pub struct RigidBodyHandle {
+    key: String
+}
+
+#[derive(Serialize, Deserialize, Diff, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
+#[diff(attr(
+    #[derive(Serialize, Deserialize)]
+))]
+pub struct ColliderHandle {
+    key: String
+}
 
 #[derive(Serialize, Deserialize, Diff, PartialEq, Clone)]
 #[diff(attr(
@@ -100,7 +113,7 @@ impl Space {
         // maps proxy handles to their real rigid bodies and colliders
 
         // this maps the collider proxy handles to the handles for their real collider bodies, so the proxy types can be updated after they are stepped
-        let mut collider_map: HashMap<RigidBodyHandle, rapier2d::geometry::ColliderHandle> = HashMap::new();
+        let mut collider_map: HashMap<ColliderHandle, rapier2d::geometry::ColliderHandle> = HashMap::new();
 
         let mut collider_set = ColliderSet::new();
 
@@ -200,7 +213,10 @@ impl Space {
     }
 
     pub fn insert_collider(&mut self, collider: Collider) -> ColliderHandle {
-        let handle: ColliderHandle = uuid::Uuid::new_v4().to_string();
+        let handle = ColliderHandle{
+            key: uuid::Uuid::new_v4().to_string()
+        };
+
 
         self.colliders.insert(handle.clone(), collider);
 
@@ -209,7 +225,9 @@ impl Space {
 
     pub fn insert_rigid_body(&mut self, rigid_body: RigidBody) -> RigidBodyHandle {
 
-        let handle: RigidBodyHandle = uuid::Uuid::new_v4().to_string();
+        let handle = RigidBodyHandle {
+            key: uuid::Uuid::new_v4().to_string()
+        };
 
         if !self.colliders.contains_key(&rigid_body.collider) {
             panic!("specified collider does not exist")
@@ -218,7 +236,7 @@ impl Space {
         // update the collider attached to the rigid body
         for (collider_handle, collider) in &mut self.colliders {
             if rigid_body.collider == *collider_handle {
-                collider.parent = Some(collider_handle.clone());
+                collider.parent = Some(handle.clone());
                 
                 break;
             }
