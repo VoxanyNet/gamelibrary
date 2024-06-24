@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use diff::Diff;
 use nalgebra::{point, vector};
-use rapier2d::{dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodySet}, geometry::{BroadPhase, ColliderSet, NarrowPhase}, pipeline::{PhysicsPipeline, QueryFilter, QueryPipeline}};
+use rapier2d::{crossbeam, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodySet}, geometry::{BroadPhase, ColliderSet, NarrowPhase}, pipeline::{ChannelEventCollector, PhysicsPipeline, QueryFilter, QueryPipeline}};
 use serde::{Deserialize, Serialize};
 
 use crate::{collider::Collider, proxies::macroquad::math::vec2::Vec2, rigid_body::RigidBody};
@@ -62,7 +62,7 @@ impl Space {
 
         // vector containing all colliders that contain the point
         let mut matching_colliders = vec![];
-
+        
 
         query_pipeline.intersections_with_point(&rigid_body_set, &collider_set, &point, filter, |handle| {
             // Callback called on each collider with a shape containing the point.
@@ -153,8 +153,12 @@ impl Space {
         let mut multibody_joint_set = MultibodyJointSet::new();
         let mut ccd_solver = CCDSolver::new();
         let mut query_pipeline = QueryPipeline::new();
+
+        let (collision_send, collision_recv) = crossbeam::channel::unbounded();
+        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
+
         let physics_hooks = ();
-        let event_handler = ();
 
         let mut physics_pipeline = PhysicsPipeline::new();
 
@@ -177,6 +181,12 @@ impl Space {
             &physics_hooks,
             &event_handler
         );
+
+        // update events
+        while let Ok(collision_event) = collision_recv.try_recv() {
+            // Handle the collision event.
+            println!("Received collision event: {:?}", collision_event);
+        }
 
         // update the rigid body proxies
         for (rigid_body_proxy_handle, rigid_body_handle) in rigid_body_map {

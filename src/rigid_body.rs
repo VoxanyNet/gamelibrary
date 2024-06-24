@@ -51,15 +51,6 @@ impl RigidBody {
         self.body_type = value.body_type().into();
     }
 
-
-    pub fn update_from_rigid_body_mut(&mut self, value: &mut rapier2d::dynamics::RigidBody) {
-        self.position = Vec2::new(value.position().translation.x, value.position().translation.y);
-        self.velocity = Vec2::new(value.linvel().x, value.linvel().y);
-        self.rotation = value.rotation().angle();
-        self.angular_velocity = value.angvel();
-        self.body_type = value.body_type().into();
-    }
-
     pub fn as_rapier_rigid_body(&self) -> rapier2d::dynamics::RigidBody {
         match self.body_type {
             RigidBodyType::Dynamic => {

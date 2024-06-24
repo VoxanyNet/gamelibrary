@@ -25,18 +25,7 @@ pub struct Collider {
 
 impl Collider {
     pub fn update_from_collider(&mut self, value: &rapier2d::geometry::Collider) {
-        
-        self.hx = value.shape().as_cuboid().unwrap().half_extents.x;
-        self.hy = value.shape().as_cuboid().unwrap().half_extents.y;
-        self.restitution = value.restitution();
-        self.mass = value.mass();
-        self.collision_groups = value.collision_groups().memberships.into();
-        self.collision_filter = value.collision_groups().filter.into();
-        self.position = Vec2::new(value.position().translation.x, value.position().translation.y);
-        self.rotation = value.rotation().angle();
-    }
 
-    pub fn update_from_collider_mut(&mut self, value: &mut rapier2d::geometry::Collider) {
         
         self.hx = value.shape().as_cuboid().unwrap().half_extents.x;
         self.hy = value.shape().as_cuboid().unwrap().half_extents.y;
@@ -44,11 +33,30 @@ impl Collider {
         self.mass = value.mass();
         self.collision_groups = value.collision_groups().memberships.into();
         self.collision_filter = value.collision_groups().filter.into();
-        self.position = Vec2::new(value.position().translation.x, value.position().translation.y);
-        self.rotation = value.rotation().angle();
+        //self.position = Vec2::new(value.position().translation.x, value.position().translation.y);
+        //
+
+        match &self.parent {
+
+            // positions need to be updated differently depending on if the collider has a parent
+            Some(_parent_handle) => {
+                self.position.x = value.position_wrt_parent().unwrap().translation.x;
+                self.position.y = value.position_wrt_parent().unwrap().translation.y;
+
+                self.rotation = value.position_wrt_parent().unwrap().rotation.angle();
+            },
+
+            None => {
+                self.position.x = value.position().translation.x;
+                self.position.y = value.position().translation.y;
+
+                self.rotation = value.position().rotation.angle();
+            },
+        }
     }
 
     pub fn as_rapier_collider(&self) -> rapier2d::geometry::Collider {
+
         rapier2d::geometry::ColliderBuilder::cuboid(self.hx, self.hy)
             .restitution(self.restitution)
             .mass(self.mass)
