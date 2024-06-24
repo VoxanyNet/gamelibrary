@@ -47,39 +47,8 @@ impl Collider {
         self.position = Vec2::new(value.position().translation.x, value.position().translation.y);
         self.rotation = value.rotation().angle();
     }
-}
 
-
-impl Into<rapier2d::geometry::Collider> for Collider {
-    fn into(self) -> rapier2d::geometry::Collider {
-
-        rapier2d::geometry::ColliderBuilder::cuboid(self.hx, self.hy)
-            .restitution(self.restitution)
-            .mass(self.mass)
-            .collision_groups(InteractionGroups::new(self.collision_groups.into(), self.collision_filter.into()))
-            .translation(vector![self.position.x, self.position.y])
-            .rotation(self.rotation)
-            .build()
-
-    }
-}
-
-impl Into<rapier2d::geometry::Collider> for &Collider {
-    fn into(self) -> rapier2d::geometry::Collider {
-        
-        rapier2d::geometry::ColliderBuilder::cuboid(self.hx, self.hy)
-            .restitution(self.restitution)
-            .mass(self.mass)
-            .collision_groups(InteractionGroups::new(self.collision_groups.into(), self.collision_filter.into()))
-            .translation(vector![self.position.x, self.position.y])
-            .rotation(self.rotation)
-            .build()
-
-    }
-}
-
-impl Into<rapier2d::geometry::Collider> for &mut Collider {
-    fn into(self) -> rapier2d::geometry::Collider {
+    pub fn as_rapier_collider(&self) -> rapier2d::geometry::Collider {
         rapier2d::geometry::ColliderBuilder::cuboid(self.hx, self.hy)
             .restitution(self.restitution)
             .mass(self.mass)
