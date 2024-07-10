@@ -192,7 +192,23 @@ pub trait HasCollider: Color {
     fn get_dragging(&mut self) -> &mut bool; // structure is currently being dragged
     fn get_drag_offset(&mut self) -> &mut Option<Vec2>; // when dragging the body, we teleport the body to the mouse plus this offset
 
+    fn contains_point(&mut self, space: &Space, point: Vec2) -> bool {
+        let mut contains_point: bool = false;
 
+        space.query_pipeline.intersections_with_point(
+            &space.rigid_body_set, &space.collider_set, &point![point.x, point.y], QueryFilter::default(), |handle| {
+                if *self.get_collider_handle() == handle {
+                    contains_point = true;
+                    return false
+                }
+
+                return true
+            }
+        );
+
+        contains_point
+    }
+    
     fn update_selected(&mut self, space: &mut Space) {
         if !is_mouse_button_released(input::MouseButton::Left) {
             return;
