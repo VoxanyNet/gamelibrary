@@ -1,13 +1,9 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use macroquad::window::screen_height;
-use proxies::macroquad::math::vec2::Vec2;
+use macroquad::{math::Vec2, window::screen_height};
 
 pub mod timeline;
-pub mod proxies;
 pub mod time;
-pub mod rigid_body;
-pub mod collider;
 pub mod space;
 pub mod traits;
 pub mod menu;

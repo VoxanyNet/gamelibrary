@@ -4,15 +4,19 @@ use std::time::Instant;
 use chrono::TimeDelta;
 use macroquad::audio::{self, load_sound};
 use macroquad::color::{GREEN, ORANGE, RED, WHITE};
-use macroquad::input::{self, is_mouse_button_down, is_mouse_button_released, mouse_position};
+use macroquad::experimental::camera::mouse;
+use macroquad::input::{self, is_mouse_button_down, is_mouse_button_released, mouse_position, KeyCode};
+use macroquad::math::{Rect, Vec2};
 use macroquad::shapes::DrawRectangleParams;
 use macroquad::texture::{self, load_texture, Texture2D};
 use macroquad::window::screen_height;
-use rapier2d::geometry::{Collider, ColliderBuilder};
+use nalgebra::{point, vector};
+use rapier2d::dynamics::RigidBodyHandle;
+use rapier2d::geometry::{Collider, ColliderBuilder, ColliderHandle};
+use rapier2d::pipeline::QueryFilter;
 
-use crate::proxies::macroquad::{input::KeyCode, math::{vec2::Vec2, rect::Rect}};
-use crate::space::{self, ColliderHandle, RigidBodyHandle, Space};
-use crate::{macroquad_to_rapier, rapier_to_macroquad, rigid_body};
+use crate::space::Space;
+use crate::{macroquad_to_rapier, rapier_to_macroquad};
 
 pub trait Velocity {
     fn get_velocity(&self) -> Vec2;
@@ -162,12 +166,12 @@ pub trait HasRect {
 
 
 pub trait Color {
-    fn color(&mut self) -> &mut crate::proxies::macroquad::color::Color;
+    fn color(&mut self) -> &mut macroquad::color::Color;
 }
 
 pub trait Drawable: HasRect + Color {
     fn draw(&mut self, camera_offset: &Vec2) {
-        macroquad::shapes::draw_rectangle(self.get_rect().x, self.get_rect().y, self.get_rect().w, self.get_rect().h, self.color().into());
+        macroquad::shapes::draw_rectangle(self.get_rect().x, self.get_rect().y, self.get_rect().w, self.get_rect().h, *self.color());
     }
 }
 
@@ -194,9 +198,22 @@ pub trait HasCollider: Color {
             return;
         }
 
-        if space.query_point(
-            macroquad_to_rapier(&Vec2::new(mouse_position().0, mouse_position().1)).into()
-        ).contains(self.get_collider_handle()) {
+        let mouse_rapier_coords = macroquad_to_rapier(&Vec2::new(mouse_position().0, mouse_position().1));
+
+        let mut contains_point: bool = false;
+
+        space.query_pipeline.intersections_with_point(
+            &space.rigid_body_set, &space.collider_set, &point![mouse_rapier_coords.x, mouse_rapier_coords.y], QueryFilter::default(), |handle| {
+                if *self.get_collider_handle() == handle {
+                    contains_point = true;
+                    return false
+                }
+
+                return true
+            }
+        );
+
+        if contains_point {
             *self.get_selected() = true;
         }
 
@@ -213,24 +230,25 @@ pub trait HasCollider: Color {
 
         let drag_offset = self.get_drag_offset().unwrap(); // there shouldn't be a situation where get_dragging returns true and there is no drag offset
         
-        let collider = space.get_collider_mut(self.get_collider_handle()).unwrap();
-
+        let mut collider = space.collider_set.get_mut(*self.get_collider_handle()).unwrap();
 
         let mouse_pos = macroquad_to_rapier(
             &Vec2::new(mouse_position().0, mouse_position().1)
         );
 
+        let offset_mouse_pos = mouse_pos - drag_offset;
+
         // if the collider has a parent rigid body, we move that instead of the collider
-        match collider.clone().parent {
+        match &mut collider.parent() {
 
             Some(rigid_body_handle) => {
-                let rigid_body = space.get_rigid_body_mut(&rigid_body_handle).unwrap();
+                let rigid_body = space.rigid_body_set.get_mut(*rigid_body_handle).unwrap();
 
-                rigid_body.position = mouse_pos - drag_offset;
+                rigid_body.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into(), true);
 
             },
             None => {
-                collider.position = mouse_pos - drag_offset;
+                collider.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into());
             },
         }
 
@@ -266,31 +284,45 @@ pub trait HasCollider: Color {
         );
 
         // if the body does not contain the mouse, but the button is down, we just dont do anything, because this is still a valid dragging state IF we are already dragging
-        if !space.query_point(mouse_pos).contains(self.get_collider_handle()) {
+
+        let mut contains_mouse = false;
+
+        space.query_pipeline.intersections_with_point(
+            &space.rigid_body_set, &space.collider_set, &point![mouse_pos.x, mouse_pos.y], QueryFilter::default(), |handle| {
+                
+                if *self.get_collider_handle() == handle {
+                    contains_mouse = true;
+                    return false
+                }
+
+                return true
+        });
+
+        if !contains_mouse {
             return
         }
 
         // at this point we know we will update dragging to true, but we want to check if this is a change from the last tick, so that we can set the mouse offset only when we begin dragging
         if !*self.get_dragging() {
 
-            let collider = space.get_collider(self.get_collider_handle()).unwrap().clone();
+            let collider = space.collider_set.get(*self.get_collider_handle()).unwrap();
 
-            match collider.parent {
+            match collider.parent() {
 
                 Some(rigid_body_handle) => {
-                    let rigid_body = space.get_rigid_body(&rigid_body_handle).unwrap();
+                    let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
 
                     *self.get_drag_offset() = Some(
-                        Vec2::new(mouse_pos.x - rigid_body.position.x, mouse_pos.y - rigid_body.position.y)
+                        Vec2::new(mouse_pos.x - rigid_body.position().translation.x, mouse_pos.y - rigid_body.position().translation.y)
                     );
 
                 },
                 None => {
 
-                    let collider = space.get_collider(self.get_collider_handle()).unwrap();
+                    let collider = space.collider_set.get(*self.get_collider_handle()).unwrap();
 
                     *self.get_drag_offset() = Some(
-                        Vec2::new(mouse_pos.x - collider.position.x, mouse_pos.y - collider.position.y)
+                        Vec2::new(mouse_pos.x - collider.position().translation.x, mouse_pos.y - collider.position().translation.y)
                     );
                 },
             }
@@ -306,38 +338,48 @@ pub trait HasCollider: Color {
 
     async fn draw(&mut self, camera_offset: &Vec2, space: &Space) {
         let collider_handle = self.get_collider_handle();
-        let collider = space.get_collider(collider_handle).expect("Invalid collider handle");
+        let collider = space.collider_set.get(*collider_handle).expect("Invalid collider handle");
 
         // if the collider has a rigid body, then we use it's position instead
-        let (position, rotation) = match collider.parent.clone() {
+        let (position, rotation) = match collider.parent() {
             Some(rigid_body_handle) => {
                 
-                let rigid_body = space.get_rigid_body(&rigid_body_handle).unwrap();
+                let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
 
-                (rigid_body.position, rigid_body.rotation)
+                (rigid_body.position(), rigid_body.rotation())
                 
 
             },
-            None => (collider.position, collider.rotation)
+            None => (collider.position(), collider.rotation())
+        };
+
+        // get the half extents of the shape. its gotttaa be a squareeee
+        let shape = collider.shape().as_typed_shape();
+
+        let (hx, hy) = match shape {
+            rapier2d::geometry::TypedShape::Cuboid(cuboid) => {
+                (cuboid.half_extents.x, cuboid.half_extents.y)
+            },
+            _ => panic!("cannot draw non cuboid shape")
         };
 
         // draw the outline
         if *self.get_selected() {
             macroquad::shapes::draw_rectangle_ex(
-                position.x, 
-                ((position.y) * -1.) + screen_height(), 
-                collider.hx * 2.5, 
-                collider.hy * 2.5, 
-                DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: WHITE }
+                position.translation.x, 
+                ((position.translation.y) * -1.) + screen_height(), 
+                hx * 2.5, 
+                hy * 2.5, 
+                DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation.angle() * -1., color: WHITE }
             );
         } 
 
         macroquad::shapes::draw_rectangle_ex(
-            position.x, 
-            ((position.y) * -1.) + screen_height(), 
-            collider.hx * 2., 
-            collider.hy * 2., 
-            DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: self.color().into() }
+            position.translation.x, 
+            ((position.translation.y) * -1.) + screen_height(), 
+            hx * 2., 
+            hy * 2., 
+            DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation.angle() * -1., color: *self.color() }
         );
 
         // for resize_handle in self.get_resize_handles() {

@@ -1,6 +1,5 @@
-use crate::proxies::macroquad::{color::Color, math::{rect::Rect, vec2::Vec2}};
 use diff::Diff;
-use macroquad::{color::{BLACK, RED, WHITE}, input::{self, mouse_position}, shapes::draw_rectangle_lines};
+use macroquad::{color::{Color, BLACK, RED, WHITE}, input::{self, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Diff, PartialEq, Clone)]
