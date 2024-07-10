@@ -27,6 +27,16 @@ pub struct Space {
     pub event_handler: (),
 }
 
+impl PartialEq for Space {
+    fn eq(&self, other: &Self) -> bool {
+        other.rigid_body_set == self.rigid_body_set && other.collider_set == self.collider_set
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        other.rigid_body_set != self.rigid_body_set || other.collider_set != self.collider_set
+    }
+}
+
 impl Space {
 
     pub fn new() -> Self {
