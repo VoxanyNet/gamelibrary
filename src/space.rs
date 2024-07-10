@@ -5,15 +5,16 @@ use std::collections::HashMap;
 use diff::Diff;
 use macroquad::math::Vec2;
 use nalgebra::{point, vector};
-use rapier2d::{crossbeam, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{BroadPhase, ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{ChannelEventCollector, PhysicsPipeline, QueryFilter, QueryPipeline}};
+use rapier2d::{crossbeam, dynamics::{rigid_body, CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{BroadPhase, ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{ChannelEventCollector, PhysicsPipeline, QueryFilter, QueryPipeline}};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Space {
     pub rigid_body_set: RigidBodySet,
     pub collider_set: ColliderSet,
     pub gravity: nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>,
     pub integration_parameters: IntegrationParameters,
+    #[serde(skip)]
     pub physics_pipeline: PhysicsPipeline,
     pub island_manager: IslandManager,
     pub broad_phase: DefaultBroadPhase,
@@ -116,4 +117,58 @@ impl Space {
 
     }
     
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SpaceDiff {
+    // for some reason i cant use RigidBodySetDiff directly
+    rigid_body_set: Option<<RigidBodySet as Diff>::Repr>,
+    collider_set: Option<<ColliderSet as Diff>::Repr>,
+    gravity: Option<nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>>,
+    // might wanna add the rest of the fields
+}
+
+impl Diff for Space {
+    type Repr = SpaceDiff; 
+
+    fn diff(&self, other: &Self) -> Self::Repr {
+        let mut diff = SpaceDiff {
+            rigid_body_set: None,
+            collider_set: None,
+            gravity: None,
+        };
+
+        if other.rigid_body_set != self.rigid_body_set {
+            diff.rigid_body_set = Some(self.rigid_body_set.diff(&other.rigid_body_set))
+        }
+
+        if other.collider_set != self.collider_set {
+            diff.collider_set = Some(self.collider_set.diff(&other.collider_set))
+        }
+
+        if other.gravity != self.gravity {
+            diff.gravity = Some(other.gravity)
+        }
+
+        diff
+
+    }
+
+    fn apply(&mut self, diff: &Self::Repr) {
+        if let Some(rigid_body_set_diff) = &diff.rigid_body_set {
+            self.rigid_body_set.apply(rigid_body_set_diff);
+        }
+
+        if let Some(collider_set_diff) = &diff.collider_set {
+            self.collider_set.apply(collider_set_diff);
+        }
+
+        if let Some(gravity) = &diff.gravity {
+            self.gravity = *gravity;
+        }
+    }
+
+    fn identity() -> Self {
+        Space::new()
+    }
 }
