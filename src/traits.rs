@@ -261,6 +261,8 @@ pub trait HasCollider: Color {
                 let rigid_body = space.rigid_body_set.get_mut(*rigid_body_handle).unwrap();
 
                 rigid_body.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into(), true);
+                // collider position is not updated until next step, so collider wont be clickable
+                collider.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into());
 
             },
             None => {

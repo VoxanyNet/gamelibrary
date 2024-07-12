@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Instant};
 
 
 
@@ -44,7 +44,7 @@ impl Space {
         let collider_set = ColliderSet::new();
     
         /* Create other structures necessary for the simulation. */
-        let gravity = vector![0.0, -9.81];
+        let gravity = vector![0.0, 0.];
         let integration_parameters = IntegrationParameters::default();
         let physics_pipeline = PhysicsPipeline::new();
         let island_manager = IslandManager::new();
@@ -80,12 +80,37 @@ impl Space {
     
         // let (collision_send, collision_recv) = crossbeam::channel::unbounded();
         // let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
-        // let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
+        // let event_handler = ChannelEventCollector::new(collision_send, contact_for   ce_send);
 
         // any colliders/bodies we do not own we will return to their original state here
+    
         let rigid_body_set_before = self.rigid_body_set.clone();
         let collider_set_before = self.collider_set.clone();
-    
+
+        let mut rigid_body_handles = vec![];
+        let mut collider_handles = vec![];
+        for rigid_body in self.rigid_body_set.iter() {
+            rigid_body_handles.push(rigid_body.0)
+        }
+
+        for collider in self.collider_set.iter() {
+            collider_handles.push(collider.0)
+        }
+
+        for rigid_body_handle in rigid_body_handles {
+            let rigid_body = self.rigid_body_set.remove(rigid_body_handle, &mut self.island_manager, &mut self.collider_set, &mut self.impulse_joint_set, &mut self.multibody_joint_set, false).unwrap();
+            self.rigid_body_set.insert(rigid_body);
+        }
+
+        for collider_handle in collider_handles {
+            let collider = self.collider_set.remove(collider_handle, &mut self.island_manager, &mut self.rigid_body_set, false).unwrap();
+
+            self.collider_set.insert(collider);
+        }
+
+        //self.island_manager = IslandManager::new();
+        
+        let then = Instant::now();
         self.physics_pipeline.step(
             &self.gravity,
             &self.integration_parameters,
@@ -101,6 +126,8 @@ impl Space {
             &self.physics_hooks,
             &self.event_handler
         );
+        println!("{}", self.rigid_body_set.len());
+        println!("{:?}", then.elapsed());
 
         for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
             if owned_rigid_bodies.contains(&rigid_body_handle) {
@@ -118,6 +145,7 @@ impl Space {
 
             *collider = collider_set_before.get(collider_handle).expect("Unable to find old version of collider before it was updated").clone();
         }
+    
 
         // update events
         // while let Ok(collision_event) = collision_recv.try_recv() {
@@ -135,6 +163,7 @@ pub struct SpaceDiff {
     rigid_body_set: Option<<RigidBodySet as Diff>::Repr>,
     collider_set: Option<<ColliderSet as Diff>::Repr>,
     gravity: Option<nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>>,
+    //island_manager: Option<<IslandManager as Diff>::Repr>
     // might wanna add the rest of the fields
 }
 
@@ -146,6 +175,7 @@ impl Diff for Space {
             rigid_body_set: None,
             collider_set: None,
             gravity: None,
+            //island_manager: None
         };
 
         if other.rigid_body_set != self.rigid_body_set {
@@ -159,6 +189,10 @@ impl Diff for Space {
         if other.gravity != self.gravity {
             diff.gravity = Some(other.gravity)
         }
+
+        // if other.island_manager != self.island_manager {
+        //     diff.island_manager = Some(self.island_manager.diff(&other.island_manager));
+        // }
 
         diff
 
@@ -176,6 +210,10 @@ impl Diff for Space {
         if let Some(gravity) = &diff.gravity {
             self.gravity = *gravity;
         }
+
+        // if let Some(island_manager_diff) = &diff.island_manager {
+        //     self.island_manager.apply(island_manager_diff)
+        // }
     }
 
     fn identity() -> Self {
