@@ -109,9 +109,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "cc"
-version = "1.1.0"
+version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaff6f8ce506b9773fa786672d63fc7a191ffea1be33f72bbd4aeacefca9ffc8"
+checksum = "324c74f2155653c90b04f25b2a47a8a631360cb908f92a772695f430c7e31052"
 
 [[package]]
 name = "cfg-if"
@@ -455,7 +455,7 @@ dependencies = [
 [[package]]
 name = "nalgebra"
 version = "0.33.0"
-source = "git+https://github.com/VoxanyNet/nalgebra#7780958c3a98e80e7a0b52715c6631ef6b6808a1"
+source = "git+https://github.com/VoxanyNet/nalgebra?rev=e418ac27d31977ed36ee95f56d7ca18a490e0b33#e418ac27d31977ed36ee95f56d7ca18a490e0b33"
 dependencies = [
  "approx",
  "diff-struct",
@@ -472,11 +472,11 @@ dependencies = [
 [[package]]
 name = "nalgebra-macros"
 version = "0.2.2"
-source = "git+https://github.com/VoxanyNet/nalgebra#7780958c3a98e80e7a0b52715c6631ef6b6808a1"
+source = "git+https://github.com/VoxanyNet/nalgebra?rev=e418ac27d31977ed36ee95f56d7ca18a490e0b33#e418ac27d31977ed36ee95f56d7ca18a490e0b33"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.70",
+ "syn 2.0.71",
 ]
 
 [[package]]
@@ -527,7 +527,7 @@ checksum = "ed3955f1a9c7c0c15e092f9c887db08b1fc683305fdf6eb6684f22555355e202"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.70",
+ "syn 2.0.71",
 ]
 
 [[package]]
@@ -598,7 +598,7 @@ dependencies = [
 [[package]]
 name = "parry2d"
 version = "0.16.1"
-source = "git+https://github.com/VoxanyNet/parry#6e5d25f80af369103d1dcc971e164c5d0840660b"
+source = "git+https://github.com/VoxanyNet/parry?rev=0bb5fa137d4a6e8ce0a04d2728e4411074fa1c14#0bb5fa137d4a6e8ce0a04d2728e4411074fa1c14"
 dependencies = [
  "approx",
  "arrayvec",
@@ -701,7 +701,7 @@ dependencies = [
 [[package]]
 name = "rapier2d"
 version = "0.21.0"
-source = "git+https://github.com/VoxanyNet/rapier?rev=f1d1203c0e0639b8338d07d62bf5ba3e59d1f724#f1d1203c0e0639b8338d07d62bf5ba3e59d1f724"
+source = "git+https://github.com/VoxanyNet/rapier?rev=4d708dc56100a9ae5c73287e95fdbc2ef2d886d4#4d708dc56100a9ae5c73287e95fdbc2ef2d886d4"
 dependencies = [
  "approx",
  "arrayvec",
@@ -766,7 +766,7 @@ checksum = "e0cd7e117be63d3c3678776753929474f3b04a43a080c744d6b0ae2a8c28e222"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.70",
+ "syn 2.0.71",
 ]
 
 [[package]]
@@ -837,9 +837,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.70"
+version = "2.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f0209b68b3613b093e0ec905354eccaedcfe83b8cb37cbdeae64026c3064c16"
+checksum = "b146dcf730474b4bcd16c311627b31ede9ab149045db4d6088b3becaea046462"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -848,22 +848,22 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.61"
+version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c546c80d6be4bc6a00c0f01730c08df82eaa7a7a61f11d656526506112cc1709"
+checksum = "f2675633b1499176c2dff06b0856a27976a8f9d436737b4cf4f312d4d91d8bbb"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.61"
+version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46c3384250002a6d5af4d114f2845d37b57521033f30d5c3f46c4d70e1197533"
+checksum = "d20468752b09f49e909e55a5d338caa8bedf615594e9d80bc4c565d30faf798c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.70",
+ "syn 2.0.71",
 ]
 
 [[package]]
@@ -926,7 +926,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.70",
+ "syn 2.0.71",
  "wasm-bindgen-shared",
 ]
 
@@ -948,7 +948,7 @@ checksum = "e94f17b526d0a461a191c78ea52bbce64071ed5c04c9ffe424dcb38f74171bb7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.70",
+ "syn 2.0.71",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -1081,5 +1081,5 @@ checksum = "fa4f8080344d4671fb4e831a13ad1e68092748387dfc4f55e356242fae12ce3e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.70",
+ "syn 2.0.71",
 ]

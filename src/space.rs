@@ -5,7 +5,7 @@ use std::{collections::HashMap, time::Instant};
 use diff::Diff;
 use macroquad::math::Vec2;
 use nalgebra::{point, vector};
-use rapier2d::{crossbeam, dynamics::{rigid_body, CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{BroadPhase, ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{ChannelEventCollector, PhysicsPipeline, QueryFilter, QueryPipeline}};
+use rapier2d::{crossbeam, dynamics::{rigid_body, CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{BroadPhase, BroadPhaseMultiSap, ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{ChannelEventCollector, PhysicsPipeline, QueryFilter, QueryPipeline}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -87,27 +87,6 @@ impl Space {
         let rigid_body_set_before = self.rigid_body_set.clone();
         let collider_set_before = self.collider_set.clone();
 
-        let mut rigid_body_handles = vec![];
-        let mut collider_handles = vec![];
-        for rigid_body in self.rigid_body_set.iter() {
-            rigid_body_handles.push(rigid_body.0)
-        }
-
-        for collider in self.collider_set.iter() {
-            collider_handles.push(collider.0)
-        }
-
-        for rigid_body_handle in rigid_body_handles {
-            let rigid_body = self.rigid_body_set.remove(rigid_body_handle, &mut self.island_manager, &mut self.collider_set, &mut self.impulse_joint_set, &mut self.multibody_joint_set, false).unwrap();
-            self.rigid_body_set.insert(rigid_body);
-        }
-
-        for collider_handle in collider_handles {
-            let collider = self.collider_set.remove(collider_handle, &mut self.island_manager, &mut self.rigid_body_set, false).unwrap();
-
-            self.collider_set.insert(collider);
-        }
-
         //self.island_manager = IslandManager::new();
         
         let then = Instant::now();
@@ -163,7 +142,6 @@ pub struct SpaceDiff {
     rigid_body_set: Option<<RigidBodySet as Diff>::Repr>,
     collider_set: Option<<ColliderSet as Diff>::Repr>,
     gravity: Option<nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>>,
-    //island_manager: Option<<IslandManager as Diff>::Repr>
     // might wanna add the rest of the fields
 }
 
@@ -175,7 +153,6 @@ impl Diff for Space {
             rigid_body_set: None,
             collider_set: None,
             gravity: None,
-            //island_manager: None
         };
 
         if other.rigid_body_set != self.rigid_body_set {
@@ -191,7 +168,7 @@ impl Diff for Space {
         }
 
         // if other.island_manager != self.island_manager {
-        //     diff.island_manager = Some(self.island_manager.diff(&other.island_manager));
+        //     diff.island_manager = Some(other.island_manager.clone());
         // }
 
         diff
@@ -211,8 +188,8 @@ impl Diff for Space {
             self.gravity = *gravity;
         }
 
-        // if let Some(island_manager_diff) = &diff.island_manager {
-        //     self.island_manager.apply(island_manager_diff)
+        // if let Some(island_manager) = &diff.island_manager {
+        //     self.island_manager = island_manager.clone();
         // }
     }
 
