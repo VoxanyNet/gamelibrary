@@ -77,6 +77,9 @@ impl Space {
 
     pub fn step(&mut self, owned_rigid_bodies: Vec<RigidBodyHandle>, owned_colliders: Vec<ColliderHandle>) {
         // convert all of the rigid bodies proxies to the actual rapier rigid body, step them all, then update the proxies using their real counterparts 
+
+
+    
     
         // let (collision_send, collision_recv) = crossbeam::channel::unbounded();
         // let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
@@ -88,6 +91,8 @@ impl Space {
         let collider_set_before = self.collider_set.clone();
 
         //self.island_manager = IslandManager::new();
+
+        //let mut broad_phase = BroadPhaseMultiSap::new();
         
         let then = Instant::now();
         self.physics_pipeline.step(
@@ -105,8 +110,6 @@ impl Space {
             &self.physics_hooks,
             &self.event_handler
         );
-        println!("{}", self.rigid_body_set.len());
-        println!("{:?}", then.elapsed());
 
         for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
             if owned_rigid_bodies.contains(&rigid_body_handle) {
@@ -142,6 +145,7 @@ pub struct SpaceDiff {
     rigid_body_set: Option<<RigidBodySet as Diff>::Repr>,
     collider_set: Option<<ColliderSet as Diff>::Repr>,
     gravity: Option<nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>>,
+    //broad_phase: Option<BroadPhaseMultiSap>
     // might wanna add the rest of the fields
 }
 
@@ -153,6 +157,7 @@ impl Diff for Space {
             rigid_body_set: None,
             collider_set: None,
             gravity: None,
+            //broad_phase: None
         };
 
         if other.rigid_body_set != self.rigid_body_set {
@@ -167,13 +172,18 @@ impl Diff for Space {
             diff.gravity = Some(other.gravity)
         }
 
+        // if other.broad_phase != self.broad_phase {
+        //     diff.broad_phase = Some(other.broad_phase.clone())
+        // }
+
+
         // if other.island_manager != self.island_manager {
         //     diff.island_manager = Some(other.island_manager.clone());
         // }
 
-        if self.rigid_body_set.len() != other.rigid_body_set.len() {
-            fs::write("diff.yaml", bitcode::serialize(&diff).unwrap()).unwrap();
-        }
+        // if self.rigid_body_set.len() != other.rigid_body_set.len() {
+        //     fs::write("diff.yaml", bitcode::serialize(&diff).unwrap()).unwrap();
+        // }
 
         diff
 
@@ -191,6 +201,10 @@ impl Diff for Space {
         if let Some(gravity) = &diff.gravity {
             self.gravity = *gravity;
         }
+
+        // if let Some(broad_phase) = &diff.broad_phase {
+        //     self.broad_phase = broad_phase.clone()
+        // }
 
         // if let Some(island_manager) = &diff.island_manager {
         //     self.island_manager = island_manager.clone();
