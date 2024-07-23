@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Instant};
+use std::{collections::HashMap, fs, time::Instant};
 
 
 
@@ -170,6 +170,10 @@ impl Diff for Space {
         // if other.island_manager != self.island_manager {
         //     diff.island_manager = Some(other.island_manager.clone());
         // }
+
+        if self.rigid_body_set.len() != other.rigid_body_set.len() {
+            fs::write("diff.yaml", bitcode::serialize(&diff).unwrap()).unwrap();
+        }
 
         diff
 
