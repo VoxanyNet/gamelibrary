@@ -7,6 +7,7 @@ edition = "2021"
 bitcode = { version = "0.6.3", features = ["serde"] }
 chrono = "0.4.38"
 diff-struct = "0.5.3"
+fxhash = "0.2.1"
 macroquad = {git = "https://github.com/VoxanyNet/macroquad", rev = "659081936a0e32befc63169391b7cc5a85801470"}
 nalgebra = {git = "https://github.com/VoxanyNet/nalgebra", rev = "e418ac27d31977ed36ee95f56d7ca18a490e0b33"}
 rand = "0.8.5"

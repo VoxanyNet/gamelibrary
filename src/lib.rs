@@ -7,6 +7,7 @@ pub mod time;
 pub mod space;
 pub mod traits;
 pub mod menu;
+pub mod texture_loader;
 
 pub fn uuid() -> String {
     // AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH

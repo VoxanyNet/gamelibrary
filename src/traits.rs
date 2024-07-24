@@ -415,51 +415,6 @@ pub trait HasCollider: Color {
     }
 }
 
-pub trait Texture: HasRect + Scale {
-    async fn draw(&self, textures: &mut HashMap<String, Texture2D>, camera_offset: &Vec2) {
-        
-        // load texture if not already
-        if !textures.contains_key(&self.get_texture_path()) {
-            let texture = load_texture(&self.get_texture_path()).await.unwrap();
-            
-            texture.set_filter(texture::FilterMode::Nearest);
-
-            textures.insert(self.get_texture_path(), texture);
-        }
-
-        let texture = textures.get(&self.get_texture_path()).unwrap();
-
-        let scaled_texture_size = Vec2 {
-            x: texture.width() * self.get_scale() as f32,
-            y: texture.height() * self.get_scale() as f32
-        };
-
-        // macroquad::shapes::draw_rectangle(
-        //     self.get_rect().x,
-        //     self.get_rect().y,
-        //     self.get_rect().w, 
-        //     self.get_rect().h,
-        //     color::RED
-        // );
-
-        macroquad::texture::draw_texture_ex(
-            texture,
-            self.get_rect().x + camera_offset.x,
-            self.get_rect().y + camera_offset.y,
-            WHITE,
-            macroquad::texture::DrawTextureParams {
-                dest_size: Some(scaled_texture_size.into()),
-                ..Default::default()
-            },
-         );
-
-    }
-
-    fn get_texture_path(&self) -> String;
-
-    fn set_texture_path(&mut self, texture_path: String);
-}
-
 pub trait HasOwner {
     fn get_owner(&self) -> String;
 
