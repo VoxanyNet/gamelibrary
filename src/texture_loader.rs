@@ -6,6 +6,10 @@ pub struct TextureLoader {
 }
 
 impl TextureLoader {
+
+    pub fn new() -> Self {
+        TextureLoader { cache: FxHashMap::default() }
+    }
     pub async fn get(&mut self, texture_path: &String) -> &Texture2D {
         // this can probably be optimized with a match statement but i cant figure it out the borrowing stuff
         if !self.cache.contains_key(texture_path) {
