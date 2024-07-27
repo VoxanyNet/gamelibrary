@@ -386,8 +386,8 @@ pub trait HasCollider: Color {
             macroquad::shapes::draw_rectangle_ex(
                 position.translation.x, 
                 ((position.translation.y) * -1.) + screen_height(), 
-                hx * 2.5, 
-                hy * 2.5, 
+                (hx * 2.) + 10., 
+                (hy * 2.)+ 10., 
                 DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation.angle() * -1., color: WHITE }
             );
         } 
