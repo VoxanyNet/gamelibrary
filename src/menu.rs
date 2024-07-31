@@ -2,12 +2,14 @@ use diff::Diff;
 use macroquad::{color::{Color, BLACK, RED, WHITE}, input::{self, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines};
 use serde::{Deserialize, Serialize};
 
+use crate::mouse_world_pos;
+
 #[derive(Serialize, Deserialize, Diff, PartialEq, Clone)]
 #[diff(attr(
     #[derive(Serialize, Deserialize)]
 ))]
 pub struct Menu {
-    items: Vec<MenuItem>,
+    items: Vec<Button>,
     position: Vec2,
     pub color: Color,
     pub containing_rect: Rect
@@ -24,29 +26,27 @@ impl Menu {
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, camera_rect: &Rect) {
 
         // reset containing rect because the menu items can change
         self.containing_rect = Rect::new(self.position.x, self.position.y, 0., 0.);
 
         for menu_item in &mut self.items {
-            menu_item.update();
+            menu_item.update(camera_rect);
 
             self.containing_rect = self.containing_rect.combine_with(menu_item.rect);
         }
 
-        let mouse_position = mouse_position();
-
     }
 
-    pub fn get_menu_items(&self) -> &Vec<MenuItem> {
+    pub fn get_menu_items(&self) -> &Vec<Button> {
         &self.items
     }
 
     pub fn add_button(&mut self, text: String) {
 
         self.items.push(
-            MenuItem { 
+            Button { 
                 rect: Rect { 
                     x: self.position.x, 
                     y: self.position.y + (30. * self.items.len() as f32), 
@@ -76,7 +76,7 @@ impl Menu {
 #[diff(attr(
     #[derive(Serialize, Deserialize)]
 ))]
-pub struct MenuItem {
+pub struct Button {
     pub rect: Rect,
     pub text: String,
     pub hovered: bool,
@@ -84,8 +84,18 @@ pub struct MenuItem {
     pub color: Color
 }
 
-impl MenuItem {
-    async fn draw(&self) {
+impl Button {
+
+    pub fn new(text: String, rect: Rect, color: macroquad::color::Color) -> Self {
+        Self {
+            rect,
+            text,
+            hovered: false,
+            clicked: false,
+            color,
+        }
+    }
+    pub async fn draw(&self) {
 
         let (rect_color, font_color) = match self.hovered {
             true => (WHITE, BLACK),
@@ -98,15 +108,15 @@ impl MenuItem {
         macroquad::text::draw_text(&self.text, self.rect.x + 3., self.rect.y + self.rect.h / 2., 20., font_color);
     }
 
-    fn update(&mut self) {
+    pub fn update(&mut self, camera_rect: &Rect) {
 
-        let mouse_position = mouse_position();
+        let mouse_position = mouse_world_pos(camera_rect);
 
         self.hovered = false;
         self.clicked = false;
 
         if self.rect.contains(
-            Vec2::new(mouse_position.0, mouse_position.1)
+            Vec2::new(mouse_position.x, mouse_position.y)
         ) {
 
             self.hovered = true;

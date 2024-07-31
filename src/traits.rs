@@ -5,18 +5,19 @@ use chrono::TimeDelta;
 use macroquad::audio::{self, load_sound};
 use macroquad::color::{GREEN, ORANGE, RED, WHITE};
 use macroquad::experimental::camera::mouse;
-use macroquad::input::{self, is_mouse_button_down, is_mouse_button_released, mouse_position, KeyCode};
+use macroquad::input::{self, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position, KeyCode};
 use macroquad::math::{Rect, Vec2};
 use macroquad::shapes::DrawRectangleParams;
 use macroquad::texture::{self, load_texture, Texture2D};
 use macroquad::window::screen_height;
-use nalgebra::{point, vector};
+use nalgebra::{point, vector, Rotation};
 use rapier2d::dynamics::RigidBodyHandle;
 use rapier2d::geometry::{Collider, ColliderBuilder, ColliderHandle};
 use rapier2d::pipeline::QueryFilter;
+use rapier2d::prelude::RigidBodyPosition;
 
 use crate::space::Space;
-use crate::{macroquad_to_rapier, rapier_to_macroquad};
+use crate::{macroquad_to_rapier, rapier_mouse_world_pos, rapier_to_macroquad};
 
 pub trait Velocity {
     fn get_velocity(&self) -> Vec2;
@@ -192,8 +193,10 @@ pub trait HasCollider: Color {
     fn get_dragging(&mut self) -> &mut bool; // structure is currently being dragged
     fn get_drag_offset(&mut self) -> &mut Option<Vec2>; // when dragging the body, we teleport the body to the mouse plus this offset
 
-    fn contains_point(&mut self, space: &Space, point: Vec2) -> bool {
+    fn contains_point(&mut self, space: &mut Space, point: Vec2) -> bool {
         let mut contains_point: bool = false;
+
+        space.query_pipeline.update(&space.collider_set);
 
         space.query_pipeline.intersections_with_point(
             &space.rigid_body_set, &space.collider_set, &point![point.x, point.y], QueryFilter::default(), |handle| {
@@ -207,29 +210,17 @@ pub trait HasCollider: Color {
         );
 
         contains_point
-    }
+    } 
     
-    fn update_selected(&mut self, space: &mut Space) {
-        if !is_mouse_button_released(input::MouseButton::Left) {
+    fn update_selected(&mut self, space: &mut Space, camera_rect: &Rect) {
+
+        if !is_mouse_button_pressed(input::MouseButton::Left) {
             return;
         }
 
-        let mouse_rapier_coords = macroquad_to_rapier(&Vec2::new(mouse_position().0, mouse_position().1));
+        let mouse_rapier_coords = rapier_mouse_world_pos(camera_rect);
 
-        let mut contains_point: bool = false;
-
-        space.query_pipeline.intersections_with_point(
-            &space.rigid_body_set, &space.collider_set, &point![mouse_rapier_coords.x, mouse_rapier_coords.y], QueryFilter::default(), |handle| {
-                if *self.get_collider_handle() == handle {
-                    contains_point = true;
-                    return false
-                }
-
-                return true
-            }
-        );
-
-        if contains_point {
+        if self.contains_point(space, mouse_rapier_coords){
             *self.get_selected() = true;
         }
 
@@ -239,7 +230,9 @@ pub trait HasCollider: Color {
         
     }
 
-    fn update_drag(&mut self, space: &mut Space) {
+    fn update_drag(&mut self, space: &mut Space, camera_rect: &Rect) {
+        // Drag the collider / rigid body with the mouse
+
         if !*self.get_dragging() {
             return
         }
@@ -248,9 +241,7 @@ pub trait HasCollider: Color {
         
         let mut collider = space.collider_set.get_mut(*self.get_collider_handle()).unwrap();
 
-        let mouse_pos = macroquad_to_rapier(
-            &Vec2::new(mouse_position().0, mouse_position().1)
-        );
+        let mouse_pos = rapier_mouse_world_pos(camera_rect);
 
         let offset_mouse_pos = mouse_pos - drag_offset;
 
@@ -261,8 +252,9 @@ pub trait HasCollider: Color {
                 let rigid_body = space.rigid_body_set.get_mut(*rigid_body_handle).unwrap();
 
                 rigid_body.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into(), true);
-                // collider position is not updated until next step, so collider wont be clickable
+
                 collider.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into());
+
 
             },
             None => {
@@ -275,7 +267,8 @@ pub trait HasCollider: Color {
         
     }
 
-    fn update_is_dragging(&mut self, space: &mut Space) {
+    fn update_is_dragging(&mut self, space: &mut Space, camera_rect: &Rect) {
+        // Determine if the collider is being dragged
 
         if *self.get_dragging() {
             *self.color() = GREEN.into();
@@ -297,9 +290,7 @@ pub trait HasCollider: Color {
             return
         }
 
-        let mouse_pos = macroquad_to_rapier(
-            &Vec2::new(mouse_position().0, mouse_position().1)
-        );
+        let mouse_pos = rapier_mouse_world_pos(camera_rect);
 
         // if the body does not contain the mouse, but the button is down, we just dont do anything, because this is still a valid dragging state IF we are already dragging
 
