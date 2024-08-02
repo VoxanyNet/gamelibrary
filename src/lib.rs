@@ -8,6 +8,7 @@ pub mod space;
 pub mod traits;
 pub mod menu;
 pub mod texture_loader;
+pub mod sync;
 
 pub fn mouse_world_pos(camera_rect: &Rect) -> Vec2 {
     let mouse_pos = mouse_position();
