@@ -1,18 +1,22 @@
 
 use macroquad::color::WHITE;
 use macroquad::input::{self, is_mouse_button_down, is_mouse_button_pressed};
-use macroquad::math::{Rect, Vec2};
+use macroquad::math::{vec2, Rect, Vec2};
 use macroquad::shapes::DrawRectangleParams;
+use macroquad::texture::{draw_texture_ex, DrawTextureParams};
 use macroquad::window::screen_height;
 use nalgebra::{point, vector};
 use rapier2d::geometry::ColliderHandle;
 use rapier2d::pipeline::QueryFilter;
+use rapier2d::prelude::RigidBodyHandle;
 
 use crate::space::Space;
-use crate::rapier_mouse_world_pos;
+use crate::{rapier_mouse_world_pos, rapier_to_macroquad};
+use crate::texture_loader::TextureLoader;
 
-pub trait HasCollider {
+pub trait HasPhysics {
     fn collider_handle(&self) -> &ColliderHandle;
+    fn rigid_body_handle(&self) -> &RigidBodyHandle;
     fn selected(&mut self) -> &mut bool;
     fn dragging(&mut self) -> &mut bool; // structure is currently being dragged
     fn drag_offset(&mut self) -> &mut Option<Vec2>; // when dragging the body, we teleport the body to the mouse plus this offset
@@ -35,6 +39,48 @@ pub trait HasCollider {
 
         contains_point
     } 
+
+    async fn draw_texture(&mut self, space: &Space, texture_path: &String, textures: &mut TextureLoader) {
+        let rigid_body = space.rigid_body_set.get(*self.rigid_body_handle()).unwrap();
+        let collider = space.collider_set.get(*self.collider_handle()).unwrap();
+
+        // use the shape to define how large we should draw the texture
+        // maybe we should change this
+        let shape = collider.shape().as_cuboid().unwrap();
+
+        let position = rigid_body.position().translation;
+        let rotation = rigid_body.rotation().angle();
+
+        let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
+
+        // draw the outline
+        if *self.selected() {
+            macroquad::shapes::draw_rectangle_ex(
+                draw_pos.x,
+                draw_pos.y, 
+                (shape.half_extents.x * 2.) + 10., 
+                (shape.half_extents.y * 2.) + 10., 
+                DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: WHITE }
+            );
+        } 
+
+        draw_texture_ex(
+            textures.get(texture_path).await, 
+            draw_pos.x - shape.half_extents.x, 
+            draw_pos.y - shape.half_extents.y, 
+            WHITE, 
+            DrawTextureParams {
+                dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
+                source: None,
+                rotation: rotation * -1.,
+                flip_x: false,
+                flip_y: false,
+                pivot: None,
+            }
+        );
+
+        
+    }
     
     fn update_selected(&mut self, space: &mut Space, camera_rect: &Rect) {
 
