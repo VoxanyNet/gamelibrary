@@ -1,4 +1,3 @@
-use std::time::Instant;
 
 use diff::Diff;
 use ewebsock::{WsReceiver, WsSender};

@@ -1,7 +1,6 @@
 use std::net::{SocketAddr, TcpListener, TcpStream};
 
 use diff::Diff;
-use ewebsock::{WsReceiver, WsSender};
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use serde::{de::DeserializeOwned, Serialize};
 use tungstenite::{Message, WebSocket};

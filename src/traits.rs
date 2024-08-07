@@ -1,23 +1,15 @@
-use std::collections::HashMap;
-use std::time::Instant;
 
-use chrono::TimeDelta;
-use macroquad::audio::{self, load_sound};
-use macroquad::color::{GREEN, ORANGE, RED, WHITE};
-use macroquad::experimental::camera::mouse;
-use macroquad::input::{self, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position, KeyCode};
+use macroquad::color::WHITE;
+use macroquad::input::{self, is_mouse_button_down, is_mouse_button_pressed};
 use macroquad::math::{Rect, Vec2};
 use macroquad::shapes::DrawRectangleParams;
-use macroquad::texture::{self, load_texture, Texture2D};
 use macroquad::window::screen_height;
-use nalgebra::{point, vector, Rotation};
-use rapier2d::dynamics::RigidBodyHandle;
-use rapier2d::geometry::{Collider, ColliderBuilder, ColliderHandle};
+use nalgebra::{point, vector};
+use rapier2d::geometry::ColliderHandle;
 use rapier2d::pipeline::QueryFilter;
-use rapier2d::prelude::RigidBodyPosition;
 
 use crate::space::Space;
-use crate::{macroquad_to_rapier, rapier_mouse_world_pos, rapier_to_macroquad};
+use crate::rapier_mouse_world_pos;
 
 // pub trait HasCollider {
 //     fn get_collider(&self) -> Collider;

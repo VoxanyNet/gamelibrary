@@ -1,5 +1,5 @@
 use diff::Diff;
-use macroquad::{color::{Color, BLACK, RED, WHITE}, input::{self, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines};
+use macroquad::{color::{Color, BLACK, WHITE}, input::{self}, math::{Rect, Vec2}, shapes::draw_rectangle_lines};
 use serde::{Deserialize, Serialize};
 
 use crate::mouse_world_pos;

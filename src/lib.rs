@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use macroquad::{camera::{Camera, Camera2D}, input::mouse_position, math::{Rect, Vec2}, window::screen_height};
+use macroquad::{camera::{Camera2D}, input::mouse_position, math::{Rect, Vec2}, window::screen_height};
 
 pub mod timeline;
 pub mod time;

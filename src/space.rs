@@ -1,11 +1,6 @@
-use std::{collections::HashMap, fs, time::Instant};
-
-
-
 use diff::Diff;
-use macroquad::math::Vec2;
-use nalgebra::{point, vector};
-use rapier2d::{crossbeam, dynamics::{rigid_body, CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{BroadPhase, BroadPhaseMultiSap, ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{ChannelEventCollector, PhysicsPipeline, QueryFilter, QueryPipeline}};
+use nalgebra::vector;
+use rapier2d::{dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -94,7 +89,6 @@ impl Space {
 
         //let mut broad_phase = BroadPhaseMultiSap::new();
         
-        let then = Instant::now();
         self.physics_pipeline.step(
             &self.gravity,
             &self.integration_parameters,
