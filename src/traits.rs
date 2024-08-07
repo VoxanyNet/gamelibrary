@@ -11,17 +11,11 @@ use rapier2d::pipeline::QueryFilter;
 use crate::space::Space;
 use crate::rapier_mouse_world_pos;
 
-// pub trait HasCollider {
-//     fn get_collider(&self) -> Collider;
-//     fn set_collider(&mut self, collider: Collider);
-// }
-
-
 pub trait HasCollider {
-    fn get_collider_handle(&self) -> &ColliderHandle;
-    fn get_selected(&mut self) -> &mut bool;
-    fn get_dragging(&mut self) -> &mut bool; // structure is currently being dragged
-    fn get_drag_offset(&mut self) -> &mut Option<Vec2>; // when dragging the body, we teleport the body to the mouse plus this offset
+    fn collider_handle(&self) -> &ColliderHandle;
+    fn selected(&mut self) -> &mut bool;
+    fn dragging(&mut self) -> &mut bool; // structure is currently being dragged
+    fn drag_offset(&mut self) -> &mut Option<Vec2>; // when dragging the body, we teleport the body to the mouse plus this offset
 
     fn contains_point(&mut self, space: &mut Space, point: Vec2) -> bool {
         let mut contains_point: bool = false;
@@ -30,7 +24,7 @@ pub trait HasCollider {
 
         space.query_pipeline.intersections_with_point(
             &space.rigid_body_set, &space.collider_set, &point![point.x, point.y], QueryFilter::default(), |handle| {
-                if *self.get_collider_handle() == handle {
+                if *self.collider_handle() == handle {
                     contains_point = true;
                     return false
                 }
@@ -51,11 +45,11 @@ pub trait HasCollider {
         let mouse_rapier_coords = rapier_mouse_world_pos(camera_rect);
 
         if self.contains_point(space, mouse_rapier_coords){
-            *self.get_selected() = true;
+            *self.selected() = true;
         }
 
         else {
-            *self.get_selected() = false;
+            *self.selected() = false;
         }
         
     }
@@ -63,13 +57,13 @@ pub trait HasCollider {
     fn update_drag(&mut self, space: &mut Space, camera_rect: &Rect) {
         // Drag the collider / rigid body with the mouse
 
-        if !*self.get_dragging() {
+        if !*self.dragging() {
             return
         }
 
-        let drag_offset = self.get_drag_offset().unwrap(); // there shouldn't be a situation where get_dragging returns true and there is no drag offset
+        let drag_offset = self.drag_offset().unwrap(); // there shouldn't be a situation where get_dragging returns true and there is no drag offset
         
-        let collider = space.collider_set.get_mut(*self.get_collider_handle()).unwrap();
+        let collider = space.collider_set.get_mut(*self.collider_handle()).unwrap();
 
         let mouse_pos = rapier_mouse_world_pos(camera_rect);
 
@@ -100,15 +94,15 @@ pub trait HasCollider {
     fn update_is_dragging(&mut self, space: &mut Space, camera_rect: &Rect) {
         // Determine if the collider is being dragged
 
-        if !*self.get_selected() {
-            *self.get_dragging() = false;
-            *self.get_drag_offset() = None;
+        if !*self.selected() {
+            *self.dragging() = false;
+            *self.drag_offset() = None;
             return
         }
 
         if !is_mouse_button_down(input::MouseButton::Left) {
-            *self.get_dragging() = false;
-            *self.get_drag_offset() = None;
+            *self.dragging() = false;
+            *self.drag_offset() = None;
             return
         }
 
@@ -121,7 +115,7 @@ pub trait HasCollider {
         space.query_pipeline.intersections_with_point(
             &space.rigid_body_set, &space.collider_set, &point![mouse_pos.x, mouse_pos.y], QueryFilter::default(), |handle| {
                 
-                if *self.get_collider_handle() == handle {
+                if *self.collider_handle() == handle {
                     contains_mouse = true;
                     return false
                 }
@@ -134,25 +128,25 @@ pub trait HasCollider {
         }
 
         // at this point we know we will update dragging to true, but we want to check if this is a change from the last tick, so that we can set the mouse offset only when we begin dragging
-        if !*self.get_dragging() {
+        if !*self.dragging() {
 
-            let collider = space.collider_set.get(*self.get_collider_handle()).unwrap();
+            let collider = space.collider_set.get(*self.collider_handle()).unwrap();
 
             match collider.parent() {
 
                 Some(rigid_body_handle) => {
                     let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
 
-                    *self.get_drag_offset() = Some(
+                    *self.drag_offset() = Some(
                         Vec2::new(mouse_pos.x - rigid_body.position().translation.x, mouse_pos.y - rigid_body.position().translation.y)
                     );
 
                 },
                 None => {
 
-                    let collider = space.collider_set.get(*self.get_collider_handle()).unwrap();
+                    let collider = space.collider_set.get(*self.collider_handle()).unwrap();
 
-                    *self.get_drag_offset() = Some(
+                    *self.drag_offset() = Some(
                         Vec2::new(mouse_pos.x - collider.position().translation.x, mouse_pos.y - collider.position().translation.y)
                     );
                 },
@@ -161,14 +155,14 @@ pub trait HasCollider {
             
         }
 
-        *self.get_dragging() = true;
+        *self.dragging() = true;
 
         
 
     }
 
     async fn draw_collider(&mut self, space: &Space) {
-        let collider_handle = self.get_collider_handle();
+        let collider_handle = self.collider_handle();
         let collider = space.collider_set.get(*collider_handle).expect("Invalid collider handle");
 
         // if the collider has a rigid body, then we use it's position instead
@@ -195,7 +189,7 @@ pub trait HasCollider {
         };
 
         // draw the outline
-        if *self.get_selected() {
+        if *self.selected() {
             macroquad::shapes::draw_rectangle_ex(
                 position.translation.x, 
                 ((position.translation.y) * -1.) + screen_height(), 
