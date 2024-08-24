@@ -70,24 +70,11 @@ impl Space {
         }
     }
 
-    pub fn step(&mut self, owned_rigid_bodies: Vec<RigidBodyHandle>, owned_colliders: Vec<ColliderHandle>) {
-        // convert all of the rigid bodies proxies to the actual rapier rigid body, step them all, then update the proxies using their real counterparts 
-
-
-    
-    
-        // let (collision_send, collision_recv) = crossbeam::channel::unbounded();
-        // let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
-        // let event_handler = ChannelEventCollector::new(collision_send, contact_for   ce_send);
-
+    pub fn step(&mut self, owned_rigid_bodies: &Vec<RigidBodyHandle>, owned_colliders: &Vec<ColliderHandle>) {
         // any colliders/bodies we do not own we will return to their original state here
     
         let rigid_body_set_before = self.rigid_body_set.clone();
         let collider_set_before = self.collider_set.clone();
-
-        //self.island_manager = IslandManager::new();
-
-        //let mut broad_phase = BroadPhaseMultiSap::new();
         
         self.physics_pipeline.step(
             &self.gravity,
@@ -121,13 +108,6 @@ impl Space {
 
             *collider = collider_set_before.get(collider_handle).expect("Unable to find old version of collider before it was updated").clone();
         }
-    
-
-        // update events
-        // while let Ok(collision_event) = collision_recv.try_recv() {
-        //     // Handle the collision event.
-        //     println!("Received collision event: {:?}", collision_event);
-        // }
 
     }
     

@@ -23,7 +23,7 @@ where
                 panic!("failed to connect to server: {}", error)
             },
         }; 
-
+        
         // wait for Opened event from server
         loop {
             match server_receive.try_recv() {
