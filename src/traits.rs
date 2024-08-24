@@ -17,7 +17,8 @@ use crate::texture_loader::TextureLoader;
 pub trait HasPhysics {
     fn collider_handle(&self) -> &ColliderHandle;
     fn rigid_body_handle(&self) -> &RigidBodyHandle;
-    fn selected(&mut self) -> &mut bool;
+    fn selected(&self) -> &bool;
+    fn selected_mut(&mut self) -> &mut bool;
     fn dragging(&mut self) -> &mut bool; // structure is currently being dragged
     fn drag_offset(&mut self) -> &mut Option<Vec2>; // when dragging the body, we teleport the body to the mouse plus this offset
 
@@ -40,7 +41,7 @@ pub trait HasPhysics {
         contains_point
     } 
 
-    async fn draw_texture(&mut self, space: &Space, texture_path: &String, textures: &mut TextureLoader) {
+    async fn draw_texture(&self, space: &Space, texture_path: &String, textures: &mut TextureLoader) {
         let rigid_body = space.rigid_body_set.get(*self.rigid_body_handle()).unwrap();
         let collider = space.collider_set.get(*self.collider_handle()).unwrap();
 
@@ -91,11 +92,11 @@ pub trait HasPhysics {
         let mouse_rapier_coords = rapier_mouse_world_pos(camera_rect);
 
         if self.contains_point(space, mouse_rapier_coords){
-            *self.selected() = true;
+            *self.selected_mut() = true;
         }
 
         else {
-            *self.selected() = false;
+            *self.selected_mut() = false;
         }
         
     }
