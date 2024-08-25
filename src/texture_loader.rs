@@ -5,6 +5,12 @@ pub struct TextureLoader {
     pub cache: FxHashMap<String, Texture2D>
 }
 
+impl Default for TextureLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TextureLoader {
 
     pub fn new() -> Self {
