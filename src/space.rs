@@ -1,4 +1,7 @@
+use std::time::Instant;
+
 use diff::Diff;
+use macroquad::input::{is_key_released, KeyCode};
 use nalgebra::vector;
 use rapier2d::{dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}};
 use serde::{Deserialize, Serialize};
@@ -71,10 +74,17 @@ impl Space {
     }
 
     pub fn step(&mut self, owned_rigid_bodies: &Vec<RigidBodyHandle>, owned_colliders: &Vec<ColliderHandle>) {
+        
         // any colliders/bodies we do not own we will return to their original state here
-    
         let rigid_body_set_before = self.rigid_body_set.clone();
-        let collider_set_before = self.collider_set.clone();
+
+        for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
+            if owned_rigid_bodies.contains(&rigid_body_handle) {
+                continue;
+            }
+
+            rigid_body.set_body_type(rapier2d::prelude::RigidBodyType::KinematicPositionBased, false);
+        }
         
         self.physics_pipeline.step(
             &self.gravity,
@@ -91,22 +101,25 @@ impl Space {
             &self.physics_hooks,
             &self.event_handler
         );
-
+        //println!("time: {:?}", self.);
+        
         for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
             if owned_rigid_bodies.contains(&rigid_body_handle) {
                 continue;
             }
 
-            // figure out how to make this not clone
-            *rigid_body = rigid_body_set_before.get(rigid_body_handle).expect("Unable to find old version of rigid body before it was updated").clone();
-        }
+            let rigid_body_before = rigid_body_set_before.get(rigid_body_handle).expect("Unable to find old version of rigid body before it was updated");
 
-        for (collider_handle, collider) in self.collider_set.iter_mut() {
-            if owned_colliders.contains(&collider_handle) {
-                continue;
-            }
-
-            *collider = collider_set_before.get(collider_handle).expect("Unable to find old version of collider before it was updated").clone();
+            //*rigid_body = rigid_body_before.clone();
+            rigid_body.set_position(*rigid_body_before.position(), false);
+            rigid_body.set_linvel(*rigid_body_before.linvel(), false);
+            rigid_body.set_angvel(rigid_body_before.angvel(), false);
+            rigid_body.set_body_type(rigid_body_before.body_type(), false);
+            rigid_body.set_rotation(*rigid_body_before.rotation(), false);
+            rigid_body.set_next_kinematic_position(*rigid_body_before.next_position());
+            
+            
+            
         }
 
     }

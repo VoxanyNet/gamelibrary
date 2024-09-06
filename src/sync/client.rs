@@ -2,6 +2,7 @@
 use diff::Diff;
 use ewebsock::{WsReceiver, WsSender};
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
+use macroquad::input::{is_key_down, is_key_released, KeyCode};
 use serde::{de::DeserializeOwned, Serialize};
 
 pub struct SyncClient<T: Serialize + DeserializeOwned + Diff + Clone + PartialEq> {
@@ -106,6 +107,10 @@ where
         }
 
         let state_diff = self.previous_state.diff(&state);
+
+        if is_key_down(KeyCode::M) {
+            println!();
+        }
 
         let diff_bytes = bitcode::serialize(&state_diff).expect("failed to serialize state diff");
         
