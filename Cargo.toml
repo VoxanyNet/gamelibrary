@@ -15,6 +15,7 @@ nalgebra = {git = "https://github.com/VoxanyNet/nalgebra", rev = "c57d898ac19a01
 rand = "0.8.5"
 rapier2d = { git = "https://github.com/VoxanyNet/rapier", rev = "54b56a9a72d223b407a01c97865067eaa3d5e0e4", features = ["serde-serialize"] }
 serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.128"
 serde_yaml = "0.9.34"
 tungstenite = "0.23.0"
 uuid = { version = "1.8.0", features = ["v4"] }

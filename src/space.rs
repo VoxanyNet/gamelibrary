@@ -77,13 +77,17 @@ impl Space {
         
         // any colliders/bodies we do not own we will return to their original state here
         let rigid_body_set_before = self.rigid_body_set.clone();
+        let collider_set_before = self.collider_set.clone();
+        
 
         for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
+
+            rigid_body.wake_up(true);   
             if owned_rigid_bodies.contains(&rigid_body_handle) {
                 continue;
             }
 
-            rigid_body.set_body_type(rapier2d::prelude::RigidBodyType::KinematicPositionBased, false);
+            //rigid_body.set_body_type(rapier2d::prelude::RigidBodyType::KinematicPositionBased, false);
         }
         
         self.physics_pipeline.step(
@@ -110,17 +114,31 @@ impl Space {
 
             let rigid_body_before = rigid_body_set_before.get(rigid_body_handle).expect("Unable to find old version of rigid body before it was updated");
 
-            //*rigid_body = rigid_body_before.clone();
-            rigid_body.set_position(*rigid_body_before.position(), false);
-            rigid_body.set_linvel(*rigid_body_before.linvel(), false);
-            rigid_body.set_angvel(rigid_body_before.angvel(), false);
-            rigid_body.set_body_type(rigid_body_before.body_type(), false);
-            rigid_body.set_rotation(*rigid_body_before.rotation(), false);
-            rigid_body.set_next_kinematic_position(*rigid_body_before.next_position());
-            
-            
-            
+            *rigid_body = rigid_body_before.clone();
+            // rigid_body.set_position(*rigid_body_before.position(), false);
+            // rigid_body.set_linvel(*rigid_body_before.linvel(), false);
+            // rigid_body.set_angvel(rigid_body_before.angvel(), false);
+            // rigid_body.set_body_type(rigid_body_before.body_type(), false);
+            // rigid_body.set_rotation(*rigid_body_before.rotation(), false);
+            // rigid_body.set_next_kinematic_position(*rigid_body_before.next_position());
+         
         }
+
+        for (collider_handle, collider) in self.collider_set.iter_mut() {
+            if owned_colliders.contains(&collider_handle) {
+                continue;
+            }
+
+            let collider_before = collider_set_before.get(collider_handle).expect("Unable to find old version of collider before it was updated");
+            
+            //std::fs::write("epic.json", serde_json::to_string_pretty(&collider_before.diff(&collider)).unwrap()).unwrap();
+
+            //*collider = collider_before.clone();
+        }
+
+        
+
+
 
     }
     
