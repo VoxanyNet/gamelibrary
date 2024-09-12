@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use diff::Diff;
 use macroquad::input::{is_key_released, KeyCode};
@@ -73,11 +73,13 @@ impl Space {
         }
     }
 
-    pub fn step(&mut self, owned_rigid_bodies: &Vec<RigidBodyHandle>, owned_colliders: &Vec<ColliderHandle>) {
+    pub fn step(&mut self, dt: Duration, owned_rigid_bodies: &Vec<RigidBodyHandle>, owned_colliders: &Vec<ColliderHandle>) {
         
         // any colliders/bodies we do not own we will return to their original state here
         let rigid_body_set_before = self.rigid_body_set.clone();
         let collider_set_before = self.collider_set.clone();
+
+        self.integration_parameters.dt = dt.as_secs_f32();
         
 
         for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
