@@ -37,7 +37,10 @@ where
     }
 
     pub fn receive_updates(&mut self) {
-        'client_loop: for client_index in 0..self.clients.len() {
+
+        let mut client_index = 0;
+
+        'client_loop: while client_index < self.clients.len() {
 
             // take the client out, receive all updates, then put it back in
             let mut client = self.clients.remove(client_index);
@@ -63,8 +66,17 @@ where
                                         // this means that there was no update to read
                                         self.clients.insert(client_index, client);
                                         
+                                        client_index += 1;
+                                        
                                         continue 'client_loop // move to the next client
                                     },
+                                    std::io::ErrorKind::ConnectionReset => {
+                                        println!("client {} disconnected", client_index);
+
+                                        // do not increment client index because we arent putting this one back
+
+                                        continue 'client_loop;
+                                    }
                                     _ => todo!("unhandled io error: {}", io_error),
                                 }
                             },
