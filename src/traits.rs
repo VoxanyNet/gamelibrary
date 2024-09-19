@@ -1,12 +1,13 @@
 
 use macroquad::color::WHITE;
-use macroquad::input::{self, is_mouse_button_down, is_mouse_button_pressed};
+use macroquad::input::{self, is_key_down, is_mouse_button_down, is_mouse_button_pressed};
 use macroquad::math::{vec2, Rect, Vec2};
 use macroquad::shapes::DrawRectangleParams;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams};
 use macroquad::window::screen_height;
 use nalgebra::{point, vector};
 use rapier2d::geometry::ColliderHandle;
+use rapier2d::math::Rotation;
 use rapier2d::pipeline::QueryFilter;
 use rapier2d::prelude::RigidBodyHandle;
 
@@ -21,6 +22,11 @@ pub trait HasPhysics {
     fn selected_mut(&mut self) -> &mut bool;
     fn dragging(&mut self) -> &mut bool; // structure is currently being dragged
     fn drag_offset(&mut self) -> &mut Option<Vec2>; // when dragging the body, we teleport the body to the mouse plus this offset
+
+    fn remove_body_and_collider(&mut self, space: &mut Space) {
+
+        space.rigid_body_set.remove(*self.rigid_body_handle(), &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+    }
 
     fn contains_point(&mut self, space: &mut Space, point: Vec2) -> bool {
         let mut contains_point: bool = false;
@@ -41,7 +47,60 @@ pub trait HasPhysics {
         contains_point
     } 
 
-    async fn draw_outline(&self, space: &Space) {
+    fn editor_rotate(&mut self, space: &mut Space) {
+        if !*self.selected() {return}
+
+        if !is_key_down(input::KeyCode::R) {return}
+
+        let rigid_body = space.rigid_body_set.get_mut(*self.rigid_body_handle()).unwrap();
+        
+        rigid_body.set_rotation(Rotation::from_angle(rigid_body.rotation().angle() - 0.05), true);
+    }
+
+    fn editor_resize(&mut self, space: &mut Space) {
+
+        if !*self.selected() {
+            return;
+        }
+        let collider = space.collider_set.get_mut(*self.collider_handle()).unwrap();
+        let rigid_body = space.rigid_body_set.get_mut(*self.rigid_body_handle()).unwrap();
+
+        let shape = collider.shape_mut().as_cuboid_mut().unwrap();
+
+        let increase_unit = 10.;
+
+        if is_key_down(input::KeyCode::Right) {
+            
+            shape.half_extents.x += increase_unit;
+            rigid_body.set_position(vector![rigid_body.position().translation.x + increase_unit, rigid_body.position().translation.y].into(), true)
+        }
+
+        if is_key_down(input::KeyCode::Up) {
+            shape.half_extents.y += increase_unit;
+            rigid_body.set_position(vector![rigid_body.position().translation.x, rigid_body.position().translation.y + increase_unit].into(), true)
+        }
+
+        if is_key_down(input::KeyCode::Down) {
+            shape.half_extents.y -= increase_unit;
+            rigid_body.set_position(vector![rigid_body.position().translation.x, rigid_body.position().translation.y - increase_unit].into(), true)
+        }
+
+        if is_key_down(input::KeyCode::Left) {
+            shape.half_extents.x -= increase_unit;
+            rigid_body.set_position(vector![rigid_body.position().translation.x - increase_unit, rigid_body.position().translation.y].into(), true)
+        }
+
+        if shape.half_extents.x <= 0. {
+            shape.half_extents.x = 1.
+        }
+
+        if shape.half_extents.y <= 0. {
+            shape.half_extents.y = 1.
+        }
+        
+    }
+
+    async fn draw_outline(&self, space: &Space, outline_thickness: f32) {
         let rigid_body = space.rigid_body_set.get(*self.rigid_body_handle()).unwrap();
         let collider = space.collider_set.get(*self.collider_handle()).unwrap();
 
@@ -59,8 +118,8 @@ pub trait HasPhysics {
             macroquad::shapes::draw_rectangle_ex(
                 draw_pos.x,
                 draw_pos.y, 
-                (shape.half_extents.x * 2.) + 10., 
-                (shape.half_extents.y * 2.) + 10., 
+                (shape.half_extents.x * 2.) + outline_thickness, 
+                (shape.half_extents.y * 2.) + outline_thickness, 
                 DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: WHITE }
             );
         } 

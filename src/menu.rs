@@ -1,8 +1,8 @@
 use diff::Diff;
-use macroquad::{color::{Color, BLACK, WHITE}, input::{self}, math::{Rect, Vec2}, shapes::draw_rectangle_lines};
+use macroquad::{color::{Color, BLACK, WHITE}, input::{self, mouse_position}, math::{Rect, Vec2}, shapes::draw_rectangle_lines};
 use serde::{Deserialize, Serialize};
 
-use crate::mouse_world_pos;
+use crate::{mouse_world_pos, rapier_mouse_world_pos};
 
 #[derive(Serialize, Deserialize, Diff, PartialEq, Clone)]
 #[diff(attr(
@@ -110,7 +110,7 @@ impl Button {
 
     pub fn update(&mut self, camera_rect: &Rect) {
 
-        let mouse_position = mouse_world_pos(camera_rect);
+        let mouse_position = Vec2::from_array(mouse_position().into());
 
         self.hovered = false;
         self.clicked = false;

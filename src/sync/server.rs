@@ -54,6 +54,10 @@ where
                             Message::Binary(compressed_state_diff_bytes) => {
                                 compressed_state_diff_bytes
                             },
+                            Message::Close(_close_message) => {
+                                println!("client {} disconnected", client_index);
+                                continue 'client_loop;
+                            },
                             _ => todo!("client tried to send non binary message")
                         }
                     },
@@ -80,7 +84,16 @@ where
                                     _ => todo!("unhandled io error: {}", io_error),
                                 }
                             },
-                            _ => todo!("unhandled websocket message read error: {}", error)
+                            
+                            tungstenite::Error::Protocol(_error) => {
+                                println!("client {} disconnected due to protocol error", client_index);
+
+                                // do not increment client index because we arent putting this one back
+
+                                continue 'client_loop;
+                            },
+                            
+                            _ => todo!("unhandled websocket message read error: {}", error.to_string())
                         }
                     },
                 };
