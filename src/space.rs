@@ -1,14 +1,16 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use diff::Diff;
-use macroquad::input::{is_key_released, KeyCode};
 use nalgebra::vector;
-use rapier2d::{dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}};
-use serde::{Deserialize, Serialize};
+use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, CollisionEvent}};
+use serde::{Deserialize, Deserializer, Serialize};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize)]
 pub struct Space {
+    
     pub rigid_body_set: RigidBodySet,
+    #[serde(skip)]
+    pub collision_recv: Receiver<CollisionEvent>,
     pub collider_set: ColliderSet,
     pub gravity: nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>,
     pub integration_parameters: IntegrationParameters,
@@ -22,7 +24,81 @@ pub struct Space {
     pub ccd_solver: CCDSolver,
     pub query_pipeline: QueryPipeline,
     pub physics_hooks: (),
-    pub event_handler: (),
+    #[serde(skip)]
+    pub event_handler: ChannelEventCollector,
+}
+
+impl<'de> Deserialize<'de> for Space {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct SpaceHelper {
+            rigid_body_set: RigidBodySet,
+            collider_set: ColliderSet,
+            gravity: nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>,
+            integration_parameters: IntegrationParameters,
+            island_manager: IslandManager,
+            broad_phase: DefaultBroadPhase,
+            narrow_phase: NarrowPhase,
+            impulse_joint_set: ImpulseJointSet,
+            multibody_joint_set: MultibodyJointSet,
+            ccd_solver: CCDSolver,
+            query_pipeline: QueryPipeline,
+        }
+
+        let helper = SpaceHelper::deserialize(deserializer)?;
+
+        let (collision_send, collision_recv) = crossbeam::channel::unbounded();
+        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
+
+        Ok(Space {
+            rigid_body_set: helper.rigid_body_set,
+            collision_recv,
+            collider_set: helper.collider_set,
+            gravity: helper.gravity,
+            integration_parameters: helper.integration_parameters,
+            physics_pipeline: PhysicsPipeline::new(),
+            island_manager: helper.island_manager,
+            broad_phase: helper.broad_phase,
+            narrow_phase: helper.narrow_phase,
+            impulse_joint_set: helper.impulse_joint_set,
+            multibody_joint_set: helper.multibody_joint_set,
+            ccd_solver: helper.ccd_solver,
+            query_pipeline: helper.query_pipeline,
+            event_handler,
+            physics_hooks: ()
+        })
+    }
+}
+
+impl Clone for Space {
+    fn clone(&self) -> Self {
+
+        let (collision_send, collision_recv) = crossbeam::channel::unbounded();
+        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
+
+        Self {
+            rigid_body_set: self.rigid_body_set.clone(),
+            collider_set: self.collider_set.clone(),
+            gravity: self.gravity.clone(),
+            integration_parameters: self.integration_parameters.clone(),
+            physics_pipeline: self.physics_pipeline.clone(),
+            island_manager: self.island_manager.clone(),
+            broad_phase: self.broad_phase.clone(),
+            narrow_phase: self.narrow_phase.clone(),
+            impulse_joint_set: self.impulse_joint_set.clone(),
+            multibody_joint_set: self.multibody_joint_set.clone(),
+            ccd_solver: self.ccd_solver.clone(),
+            query_pipeline: self.query_pipeline.clone(),
+            physics_hooks: self.physics_hooks.clone(),
+            event_handler,
+            collision_recv
+        }
+    }
 }
 
 impl PartialEq for Space {
@@ -40,6 +116,11 @@ impl Space {
     pub fn new() -> Self {
         let rigid_body_set = RigidBodySet::new();
         let collider_set = ColliderSet::new();
+
+
+        let (collision_send, collision_recv) = crossbeam::channel::unbounded();
+        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
     
         /* Create other structures necessary for the simulation. */
         let gravity = vector![0.0, 0.];
@@ -53,7 +134,6 @@ impl Space {
         let ccd_solver = CCDSolver::new();
         let query_pipeline = QueryPipeline::new();
         let physics_hooks = ();
-        let event_handler = ();
 
         Self { 
             rigid_body_set, 
@@ -69,7 +149,8 @@ impl Space {
             ccd_solver, 
             query_pipeline, 
             physics_hooks, 
-            event_handler 
+            event_handler,
+            collision_recv
         }
     }
 
@@ -84,6 +165,7 @@ impl Space {
 
         for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
 
+            // this is a temporary workaround but i think we are failing to sync sleep states
             rigid_body.wake_up(true);   
             if owned_rigid_bodies.contains(&rigid_body_handle) {
                 continue;
@@ -116,13 +198,8 @@ impl Space {
 
             let rigid_body_before = rigid_body_set_before.get(rigid_body_handle).expect("Unable to find old version of rigid body before it was updated");
 
+            // we should probably remove this instead of cloning?
             *rigid_body = rigid_body_before.clone();
-            // rigid_body.set_position(*rigid_body_before.position(), false);
-            // rigid_body.set_linvel(*rigid_body_before.linvel(), false);
-            // rigid_body.set_angvel(rigid_body_before.angvel(), false);
-            // rigid_body.set_body_type(rigid_body_before.body_type(), false);
-            // rigid_body.set_rotation(*rigid_body_before.rotation(), false);
-            // rigid_body.set_next_kinematic_position(*rigid_body_before.next_position());
          
         }
 
@@ -132,15 +209,10 @@ impl Space {
             }
 
             let collider_before = collider_set_before.get(collider_handle).expect("Unable to find old version of collider before it was updated");
-            
-            //std::fs::write("epic.json", serde_json::to_string_pretty(&collider_before.diff(&collider)).unwrap()).unwrap();
 
+            // we should probably remove this instead of cloning?
             //*collider = collider_before.clone();
         }
-
-        
-
-
 
     }
     

@@ -7,10 +7,10 @@ edition = "2021"
 bitcode = { version = "0.6.3", features = ["serde"] }
 chrono = "0.4.38"
 diff-struct = "0.5.3"
-ewebsock = "0.6.0"
+ewebsock = "0.7.0"
 fxhash = "0.2.1"
 lz4_flex = "0.11.3"
-macroquad = {git = "https://github.com/VoxanyNet/macroquad", rev = "659081936a0e32befc63169391b7cc5a85801470"}
+macroquad = {git = "https://github.com/VoxanyNet/macroquad", rev = "73db4a93f90f41942995ef757499ed61f3ff6085"}
 nalgebra = {git = "https://github.com/VoxanyNet/nalgebra", rev = "c57d898ac19a01ac5ad2d6da5f98dea91257ac9e"}
 rand = "0.8.5"
 rapier2d = { git = "https://github.com/VoxanyNet/rapier", rev = "54b56a9a72d223b407a01c97865067eaa3d5e0e4", features = ["serde-serialize"] }
@@ -19,3 +19,5 @@ serde_json = "1.0.128"
 serde_yaml = "0.9.34"
 tungstenite = "0.23.0"
 uuid = { version = "1.8.0", features = ["v4"] }
+getrandom = { version = "0.2.15", features = ["js"] }
+web-sys = { version = "0.3.72", features = ["console"] }

@@ -2,8 +2,9 @@
 use diff::Diff;
 use ewebsock::{WsReceiver, WsSender};
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
-use macroquad::input::{is_key_down, is_key_released, KeyCode};
+use macroquad::input::{is_key_down, KeyCode};
 use serde::{de::DeserializeOwned, Serialize};
+use tungstenite::{client, connect, protocol::WebSocketConfig};
 
 pub struct SyncClient<T: Serialize + DeserializeOwned + Diff + Clone + PartialEq> {
     previous_state: T,
@@ -23,8 +24,8 @@ where
             Err(error) => {
                 panic!("failed to connect to server: {}", error)
             },
-        }; 
-        
+        };
+
         // wait for Opened event from server
         loop {
             match server_receive.try_recv() {
@@ -44,7 +45,10 @@ where
                         
                     }
                 },
-                None => continue,
+                None => {
+                    //web_sys::console::log_1(&"Waiting for open message".into());
+                    continue;
+                },
             }
         };
 
@@ -65,7 +69,10 @@ where
                         ewebsock::WsEvent::Closed => todo!("unhandled closed event when receiving initial state"),
                     }
                 },
-                None => continue, // this means that the server would have blocked, so we try again
+                None => {
+                    
+                    continue;
+                }, // this means that the server would have blocked, so we try again
             };
         };
         

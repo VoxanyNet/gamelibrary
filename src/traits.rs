@@ -196,6 +196,8 @@ pub trait HasPhysics {
 
                 rigid_body.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into(), true);
 
+                rigid_body.set_linvel(vector![0., 0.].into(), true);
+
                 collider.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into());
 
 
@@ -203,6 +205,7 @@ pub trait HasPhysics {
             None => {
                 collider.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into());
             },
+
         }
 
         
