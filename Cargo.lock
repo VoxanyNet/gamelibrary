@@ -412,7 +412,6 @@ dependencies = [
  "serde_yaml",
  "tungstenite",
  "uuid",
- "web-sys",
 ]
 
 [[package]]
