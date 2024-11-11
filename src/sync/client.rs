@@ -4,7 +4,8 @@ use ewebsock::{WsReceiver, WsSender};
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use macroquad::input::{is_key_down, KeyCode};
 use serde::{de::DeserializeOwned, Serialize};
-use tungstenite::{client, connect, protocol::WebSocketConfig};
+
+use crate::log;
 
 pub struct SyncClient<T: Serialize + DeserializeOwned + Diff + Clone + PartialEq> {
     previous_state: T,
@@ -18,7 +19,9 @@ where
     T: Serialize + DeserializeOwned + Diff + Clone + PartialEq,
     <T as Diff>::Repr: DeserializeOwned + Serialize {
     
-    pub fn connect(url: &str) -> (Self, T) {
+    pub async fn connect(url: &str) -> (Self, T) {
+
+    
         let (server_send, server_receive) = match ewebsock::connect(url, ewebsock::Options::default()) {
             Ok(result) => result,
             Err(error) => {
@@ -46,7 +49,10 @@ where
                     }
                 },
                 None => {
-                    //web_sys::console::log_1(&"Waiting for open message".into());
+                    log("Waiting for open message");
+                    
+                    macroquad::window::next_frame().await; // let js runtime main thread continue execution while we wait
+
                     continue;
                 },
             }
@@ -70,7 +76,7 @@ where
                     }
                 },
                 None => {
-                    
+                    macroquad::window::next_frame().await;
                     continue;
                 }, // this means that the server would have blocked, so we try again
             };

@@ -107,7 +107,7 @@ impl Button {
         macroquad::text::draw_text(&self.text, self.rect.x + 3., self.rect.y + self.rect.h / 2., 20., font_color);
     }
 
-    pub fn update(&mut self, camera_rect: &Rect) {
+    pub fn update(&mut self, _camera_rect: &Rect) {
 
         let mouse_position = Vec2::from_array(mouse_position().into());
 

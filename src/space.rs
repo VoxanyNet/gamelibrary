@@ -51,7 +51,7 @@ impl<'de> Deserialize<'de> for Space {
         let helper = SpaceHelper::deserialize(deserializer)?;
 
         let (collision_send, collision_recv) = crossbeam::channel::unbounded();
-        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let (contact_force_send, _contact_force_recv) = crossbeam::channel::unbounded();
         let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
 
         Ok(Space {
@@ -78,7 +78,7 @@ impl Clone for Space {
     fn clone(&self) -> Self {
 
         let (collision_send, collision_recv) = crossbeam::channel::unbounded();
-        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let (contact_force_send, _contact_force_recv) = crossbeam::channel::unbounded();
         let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
 
         Self {
@@ -119,7 +119,7 @@ impl Space {
 
 
         let (collision_send, collision_recv) = crossbeam::channel::unbounded();
-        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let (contact_force_send, _contact_force_recv) = crossbeam::channel::unbounded();
         let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
     
         /* Create other structures necessary for the simulation. */
@@ -203,12 +203,12 @@ impl Space {
          
         }
 
-        for (collider_handle, collider) in self.collider_set.iter_mut() {
+        for (collider_handle, _collider) in self.collider_set.iter_mut() {
             if owned_colliders.contains(&collider_handle) {
                 continue;
             }
 
-            let collider_before = collider_set_before.get(collider_handle).expect("Unable to find old version of collider before it was updated");
+            let _collider_before = collider_set_before.get(collider_handle).expect("Unable to find old version of collider before it was updated");
 
             // we should probably remove this instead of cloning?
             //*collider = collider_before.clone();
