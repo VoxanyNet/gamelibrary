@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use macroquad::{camera::Camera2D, input::mouse_position, math::{Rect, Vec2}, window::screen_height};
 
 pub mod timeline;
@@ -9,6 +11,13 @@ pub mod texture_loader;
 pub mod sync;
 pub mod animation;
 pub mod animation_loader;
+
+pub fn current_unix_millis() -> u64 {
+    web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis() as u64
+}
 
 pub fn mouse_world_pos(camera_rect: &Rect) -> Vec2 {
     let mouse_pos = mouse_position();
