@@ -13,7 +13,7 @@ impl AnimationLoader {
         }
     }
 
-    pub fn get(&mut self, animation_path: &String) -> &Animation {
+    pub fn get(&mut self, animation_path: &String) -> &mut Animation {
         
         if !self.cache.contains_key(animation_path) {
             let animation = Animation::new_from_directory(animation_path);
@@ -21,7 +21,7 @@ impl AnimationLoader {
             self.cache.insert(animation_path.clone(), animation);
         };
 
-        self.cache.get(animation_path).unwrap()
+        self.cache.get_mut(animation_path).unwrap()
 
     }
 }

@@ -1,7 +1,7 @@
 use std::{fs, path::Path, time::{Duration, Instant}};
 
 
-use macroquad::{color::WHITE, texture::draw_texture};
+use macroquad::{color::WHITE, texture::{draw_texture, draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
 
 use crate::texture_loader::TextureLoader;
@@ -54,18 +54,24 @@ impl Animation {
         self.start_time = None;
     }
 
-    pub async fn draw(&mut self, x: f32, y: f32, textures: &mut TextureLoader) {
-
+    pub fn current_frame(&self) -> usize {
         // if the user hasnt started the animation, just use now as the start time. it should just use the first frame
         let elapsed = self.start_time.unwrap_or(web_time::Instant::now()).elapsed(); 
 
         // determine the current frame based on the start time of the animation
         let current_frame = (elapsed.as_millis() / self.frame_duration.as_millis()) as usize % self.frames.len();
 
+        return current_frame
+    } 
+
+    pub async fn draw(&mut self, x: f32, y: f32, textures: &mut TextureLoader, params: DrawTextureParams) {
+
+        let current_frame = self.current_frame();
+
         let current_frame_texture = textures.get(
             &self.frames[current_frame]
         ).await;
 
-        draw_texture(current_frame_texture, x, y, WHITE);
+        draw_texture_ex(current_frame_texture, x, y, WHITE, params);
     }
 }
