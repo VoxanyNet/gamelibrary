@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use gamelibrary::{animation_loader::AnimationLoader, texture_loader::TextureLoader};
+use gamelibrary::{animation_loader::AnimationLoader, menu::Menu, texture_loader::TextureLoader};
 
 use macroquad::prelude::*;
 
@@ -8,6 +8,11 @@ use macroquad::prelude::*;
 
 #[macroquad::main("Animation Test")]
 async fn main() {
+
+    let mut menu = Menu::new(Vec2::new(0., 20.), GRAY);
+
+    menu.add_button("Stop".to_string());
+    menu.add_button("Play".to_string());
 
     let mut textures = TextureLoader::new();
 
@@ -21,8 +26,34 @@ async fn main() {
 
     animation.start();
 
+
     loop {
-        clear_background(BLACK);
+
+        menu.draw().await;
+
+        menu.update(None);
+
+        for item in menu.clone().get_menu_items() {
+
+            // i still cannot figure out why this is required but otherwise it gets stuck in an infinite loop in the for loop
+            if !item.clicked {
+                continue;
+            }
+
+            match item.text.as_str() {
+                "Stop" => {
+                    animation.stop();
+
+                    
+                },
+                "Play" => {
+                    animation.start();
+
+                    
+                }
+                _ => {}
+            }
+        }
 
         animation.draw(100., 100., &mut textures, draw_params.clone()).await;
 

@@ -14,7 +14,8 @@ struct AnimationMeta {
 pub struct Animation {
     frames: Vec<String>,
     frame_duration: web_time::Duration,
-    start_time: Option<web_time::Instant>
+    start_time: Option<web_time::Instant>,
+    
 }
 
 impl Animation {
