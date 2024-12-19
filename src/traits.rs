@@ -124,7 +124,7 @@ pub trait HasPhysics {
             );
         } 
     }
-    async fn draw_texture(&self, space: &Space, texture_path: &String, textures: &mut TextureLoader) {
+    async fn draw_texture(&self, space: &Space, texture_path: &String, textures: &mut TextureLoader, flip_x: bool, flip_y: bool) {
         let rigid_body = space.rigid_body_set.get(*self.rigid_body_handle()).unwrap();
         let collider = space.collider_set.get(*self.collider_handle()).unwrap();
 
@@ -146,8 +146,8 @@ pub trait HasPhysics {
                 dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
                 source: None,
                 rotation: rotation * -1.,
-                flip_x: false,
-                flip_y: false,
+                flip_x,
+                flip_y,
                 pivot: None,
             }
         );

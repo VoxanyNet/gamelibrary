@@ -13,6 +13,9 @@ async fn main() {
 
     menu.add_button("Stop".to_string());
     menu.add_button("Play".to_string());
+    menu.add_button("Pause".to_string());
+    menu.add_button("Resume".to_string());
+    
 
     let mut textures = TextureLoader::new();
 
@@ -49,7 +52,16 @@ async fn main() {
                 "Play" => {
                     animation.start();
 
-                    
+                }
+
+                "Pause" => {
+                    animation.pause().unwrap();
+                       
+                }
+
+                "Resume" => {
+                    animation.resume().unwrap();
+                       
                 }
                 _ => {}
             }
