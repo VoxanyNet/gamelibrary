@@ -1,8 +1,8 @@
 
-use macroquad::color::WHITE;
+use macroquad::color::{RED, WHITE};
 use macroquad::input::{self, is_key_down, is_mouse_button_down, is_mouse_button_pressed};
 use macroquad::math::{vec2, Rect, Vec2};
-use macroquad::shapes::DrawRectangleParams;
+use macroquad::shapes::{draw_rectangle, draw_rectangle_ex, DrawRectangleParams};
 use macroquad::texture::{draw_texture_ex, DrawTextureParams};
 use macroquad::window::screen_height;
 use nalgebra::{point, vector};
@@ -123,6 +123,31 @@ pub trait HasPhysics {
                 DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: WHITE }
             );
         } 
+    }
+
+    fn draw_hitbox(&self, space: &Space) {
+        let rigid_body = space.rigid_body_set.get(*self.rigid_body_handle()).unwrap();
+        let collider = space.collider_set.get(*self.collider_handle()).unwrap();
+
+        // use the shape to define how large we should draw the texture
+        // maybe we should change this
+        let shape = collider.shape().as_cuboid().unwrap();
+
+        let position = rigid_body.position().translation;
+        let rotation = rigid_body.rotation().angle();
+
+        let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
+
+        macroquad::shapes::draw_rectangle_ex(
+            draw_pos.x,
+            draw_pos.y, 
+            shape.half_extents.x * 2., 
+            shape.half_extents.y * 2., 
+            DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: WHITE }
+        );
+
+
+
     }
     async fn draw_texture(&self, space: &Space, texture_path: &String, textures: &mut TextureLoader, flip_x: bool, flip_y: bool) {
         let rigid_body = space.rigid_body_set.get(*self.rigid_body_handle()).unwrap();

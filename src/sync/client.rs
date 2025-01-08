@@ -113,6 +113,7 @@ where
 
         self.previous_state = state.clone();
     }
+    
     fn send_update(&mut self, state: &T) {
 
         if self.previous_state == *state {
