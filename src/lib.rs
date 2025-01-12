@@ -11,6 +11,7 @@ pub mod texture_loader;
 pub mod sync;
 pub mod animation;
 pub mod animation_loader;
+pub mod swapiter;
 
 pub fn current_unix_millis() -> u64 {
     web_time::SystemTime::now()
