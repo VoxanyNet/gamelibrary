@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 pub struct SwapIter<'a, T> {
     vec: &'a mut Vec<T>,
     index: usize
@@ -18,7 +16,7 @@ impl<'a, T> SwapIter<'a, T> {
 
         (&mut self.vec, element)
 
-        // dont increment to the next index because we just removed an element
+        // dont increment to the next index because we just removed an element which implicity "increments" the index
     }
 
     pub fn restore(&mut self, element: T) {
