@@ -15,6 +15,69 @@ use crate::space::Space;
 use crate::{rapier_mouse_world_pos, rapier_to_macroquad};
 use crate::texture_loader::TextureLoader;
 
+pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_handle: ColliderHandle) {
+    let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
+    let collider = space.collider_set.get(collider_handle).unwrap();
+
+    // use the shape to define how large we should draw the texture
+    // maybe we should change this
+    let shape = collider.shape().as_cuboid().unwrap();
+
+    let position = rigid_body.position().translation;
+    let rotation = rigid_body.rotation().angle();
+
+    let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
+
+    macroquad::shapes::draw_rectangle_ex(
+        draw_pos.x,
+        draw_pos.y, 
+        shape.half_extents.x * 2., 
+        shape.half_extents.y * 2., 
+        DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: WHITE }
+    );
+
+}
+
+pub async fn draw_texture_onto_physics_body(
+    rigid_body_handle: RigidBodyHandle,
+    collider_handle: ColliderHandle,
+    space: &Space, 
+    texture_path: &String, 
+    textures: &mut TextureLoader, 
+    flip_x: bool, 
+    flip_y: bool, 
+    additional_rotation: f32
+) {
+    let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
+    let collider = space.collider_set.get(collider_handle).unwrap();
+
+    // use the shape to define how large we should draw the texture
+    // maybe we should change this
+    let shape = collider.shape().as_cuboid().unwrap();
+
+    let position = rigid_body.position().translation;
+    let body_rotation = rigid_body.rotation().angle();
+
+    let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
+
+    draw_texture_ex(
+        textures.get(texture_path).await, 
+        draw_pos.x - shape.half_extents.x, 
+        draw_pos.y - shape.half_extents.y, 
+        WHITE, 
+        DrawTextureParams {
+            dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
+            source: None,
+            rotation: (body_rotation * -1.) + additional_rotation,
+            flip_x,
+            flip_y,
+            pivot: None,
+        }
+    );
+
+    
+}
+
 pub trait HasPhysics {
     fn collider_handle(&self) -> &ColliderHandle;
     fn rigid_body_handle(&self) -> &RigidBodyHandle;
@@ -126,57 +189,28 @@ pub trait HasPhysics {
     }
 
     fn draw_hitbox(&self, space: &Space) {
-        let rigid_body = space.rigid_body_set.get(*self.rigid_body_handle()).unwrap();
-        let collider = space.collider_set.get(*self.collider_handle()).unwrap();
-
-        // use the shape to define how large we should draw the texture
-        // maybe we should change this
-        let shape = collider.shape().as_cuboid().unwrap();
-
-        let position = rigid_body.position().translation;
-        let rotation = rigid_body.rotation().angle();
-
-        let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
-
-        macroquad::shapes::draw_rectangle_ex(
-            draw_pos.x,
-            draw_pos.y, 
-            shape.half_extents.x * 2., 
-            shape.half_extents.y * 2., 
-            DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: WHITE }
-        );
-
-
+        draw_hitbox(space, *self.rigid_body_handle(), *self.collider_handle());
 
     }
-    async fn draw_texture(&self, space: &Space, texture_path: &String, textures: &mut TextureLoader, flip_x: bool, flip_y: bool) {
-        let rigid_body = space.rigid_body_set.get(*self.rigid_body_handle()).unwrap();
-        let collider = space.collider_set.get(*self.collider_handle()).unwrap();
-
-        // use the shape to define how large we should draw the texture
-        // maybe we should change this
-        let shape = collider.shape().as_cuboid().unwrap();
-
-        let position = rigid_body.position().translation;
-        let rotation = rigid_body.rotation().angle();
-
-        let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
-
-        draw_texture_ex(
-            textures.get(texture_path).await, 
-            draw_pos.x - shape.half_extents.x, 
-            draw_pos.y - shape.half_extents.y, 
-            WHITE, 
-            DrawTextureParams {
-                dest_size: Some(vec2(shape.half_extents.x * 2., shape.half_extents.y * 2.)),
-                source: None,
-                rotation: rotation * -1.,
-                flip_x,
-                flip_y,
-                pivot: None,
-            }
-        );
-
+    async fn draw_texture(
+        &self, 
+        space: &Space, 
+        texture_path: &String, 
+        textures: &mut TextureLoader, 
+        flip_x: bool, 
+        flip_y: bool, 
+        additional_rotation: f32
+    ) {
+        draw_texture_onto_physics_body(
+            *self.rigid_body_handle(), 
+            *self.collider_handle(), 
+            space, 
+            texture_path, 
+            textures, 
+            flip_x, 
+            flip_y, 
+            additional_rotation
+        ).await;
         
     }
     
@@ -308,7 +342,7 @@ pub trait HasPhysics {
 
     }
 
-    async fn draw_collider(&mut self, space: &Space) {
+    async fn draw_collider(&self, space: &Space) {
         let collider_handle = self.collider_handle();
         let collider = space.collider_set.get(*collider_handle).expect("Invalid collider handle");
 

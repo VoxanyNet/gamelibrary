@@ -1,4 +1,3 @@
-use std::time::Duration;
 
 use gamelibrary::{animation_loader::AnimationLoader, menu::Menu, texture_loader::TextureLoader};
 

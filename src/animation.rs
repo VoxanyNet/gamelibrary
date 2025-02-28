@@ -1,8 +1,8 @@
-use std::{fs, path::{self, Path}, time::{Duration, Instant}};
+use std::fs;
 
 
 use diff::Diff;
-use macroquad::{color::WHITE, texture::{draw_texture, draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::WHITE, texture::{draw_texture_ex, DrawTextureParams}};
 use serde::{Deserialize, Serialize};
 
 use crate::{current_unix_millis, texture_loader::TextureLoader};

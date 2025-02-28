@@ -1,6 +1,14 @@
-use std::time::{SystemTime, UNIX_EPOCH};
 
-use macroquad::{camera::Camera2D, input::mouse_position, math::{Rect, Vec2}, window::screen_height};
+use core::fmt;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
+
+use diff::Diff;
+use ears::{AudioController, SoundData, State, Tags};
+use fxhash::FxHashMap;
+use macroquad::{camera::Camera2D, color::Color, input::mouse_position, math::{vec2, Rect, Vec2, Vec3}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}, window::screen_height};
+use rapier2d::prelude::ColliderHandle;
+use serde::{de::{self, MapAccess, Visitor}, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
+use space::Space;
 
 pub mod timeline;
 pub mod time;
@@ -12,7 +20,62 @@ pub mod sync;
 pub mod animation;
 pub mod animation_loader;
 pub mod swapiter;
+pub mod syncsound;
 
+pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
+
+    let mouse_pos = rapier_mouse_world_pos(camera_rect);
+
+    let distance_to_mouse = Vec2::new(
+        mouse_pos.x - point.x,
+        mouse_pos.y - point.y 
+    );
+
+    distance_to_mouse.x.atan2(distance_to_mouse.y)
+}
+
+/// Get the relative top left of a collider
+pub fn collider_top_left_pos(space: &Space, collider_handle: ColliderHandle) -> Vec2 {
+    let collider = space.collider_set.get(collider_handle).unwrap();
+
+    let shape = collider.shape().as_cuboid().unwrap();
+
+    Vec2::new(-shape.half_extents.x, -shape.half_extents.y)
+    
+}
+pub fn rotate_point(point: Vec2, center: Vec2, theta: f32) -> Vec2 {
+
+    // translate the point to the origin
+    let translated_x = point.x - center.x;
+    let translated_y = point.y - center.y;
+
+    // apply the rotation matrix
+    let rotated_x = translated_x * theta.cos() - translated_y * theta.sin();
+    let rotated_y = translated_x * theta.sin() + translated_y * theta.cos();
+
+    // translate back to the original position
+    Vec2::new(rotated_x + center.x, rotated_y + center.y)
+}
+pub fn draw_texture_rapier(
+    texture: &Texture2D, 
+    x: f32, 
+    y: f32, 
+    color: Color, 
+    params: DrawTextureParams
+) {
+
+    let draw_pos = rapier_to_macroquad(
+        &vec2(x, y)
+    );
+
+    draw_texture_ex(
+        texture, 
+        draw_pos.x, 
+        draw_pos.y, 
+        color,
+        params
+    );
+}
 pub fn current_unix_millis() -> u64 {
     web_time::SystemTime::now()
         .duration_since(web_time::UNIX_EPOCH)

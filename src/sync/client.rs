@@ -1,4 +1,6 @@
 
+use std::{fs, time::Instant};
+
 use diff::Diff;
 use ewebsock::{WsReceiver, WsSender};
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
@@ -123,8 +125,12 @@ where
         let state_diff = self.previous_state.diff(&state);
 
         if is_key_down(KeyCode::M) {
-            println!();
+            fs::write("diff.yaml", serde_yaml::to_string(&state_diff).unwrap()).unwrap();
+            fs::write("diff.bin", bitcode::serialize(&state_diff).unwrap()).unwrap();
+            fs::write("diff.json", serde_json::to_string_pretty(&state_diff).unwrap()).unwrap();
         }
+
+
 
         let diff_bytes = bitcode::serialize(&state_diff).expect("failed to serialize state diff");
         
