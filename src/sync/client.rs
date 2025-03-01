@@ -158,7 +158,17 @@ where
                                 _ => todo!("unhandled message type when trying to receive updates from server")
                             }
                         },
-                        ewebsock::WsEvent::Error(error) => todo!("unhandled 'Error' event when trying to receive update from server: {}", error),
+                        ewebsock::WsEvent::Error(error) => {
+
+                            // this is stupid
+                            if error.contains("A non-blocking socket operation could not be completed immediately)") {
+                                println!("fortnite");
+
+                                // attempt to receive again if blocking
+                                continue;
+                            }
+                            todo!("unhandled 'Error' event when trying to receive update from server: {}", error)
+                        },
                         ewebsock::WsEvent::Closed => todo!("server closed"),
                     }
                 },
