@@ -162,9 +162,7 @@ where
 
                             // this is stupid
                             if error.contains("A non-blocking socket operation could not be completed immediately)") {
-                                println!("fortnite");
-
-                                // just give up and try again next time
+                                println!("io error: {}", error);
                                 return;
                             }
                             todo!("unhandled 'Error' event when trying to receive update from server: {}", error)
