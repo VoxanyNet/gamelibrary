@@ -164,8 +164,8 @@ where
                             if error.contains("A non-blocking socket operation could not be completed immediately)") {
                                 println!("fortnite");
 
-                                // attempt to receive again if blocking
-                                continue;
+                                // just give up and try again next time
+                                return;
                             }
                             todo!("unhandled 'Error' event when trying to receive update from server: {}", error)
                         },
