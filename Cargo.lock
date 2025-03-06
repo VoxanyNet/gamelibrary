@@ -917,7 +917,7 @@ dependencies = [
 [[package]]
 name = "rapier2d"
 version = "0.22.0"
-source = "git+https://github.com/VoxanyNet/rapier?rev=e7cc8ce6a83fab217a8d1c8d1d76c477c5bec0e4#e7cc8ce6a83fab217a8d1c8d1d76c477c5bec0e4"
+source = "git+https://github.com/VoxanyNet/rapier?rev=b8c8aa1ace0a92884213c71fe9d27f004438ac5f#b8c8aa1ace0a92884213c71fe9d27f004438ac5f"
 dependencies = [
  "approx",
  "arrayvec",
