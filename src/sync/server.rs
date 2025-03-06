@@ -110,19 +110,43 @@ where
                 'relay: for other_client_index in 0..self.clients.len() {
     
                     let mut other_client = self.clients.remove(other_client_index);
+                    
+                    // we keep on trying to send until the socket doesn't block
+                    'send_attempt: loop {
+                        match other_client.send(Message::Binary(compressed_state_diff_bytes.clone())) {
+                            Ok(_) => {
+                                self.clients.insert(other_client_index, other_client);
     
-                    match other_client.send(Message::Binary(compressed_state_diff_bytes.clone())) {
-                        Ok(_) => {
-                            self.clients.insert(other_client_index, other_client);
-
-                            continue 'relay;
-
-                        },
-                        Err(error) => {
-                            todo!("unhandled error when relaying update data to client: {}", error);
+                                continue 'relay;
     
-                        },
+                            },
+    
+                            //not yet implemented: unhandled error when relaying update data to client: IO error: A non-blocking socket operation could not be completed immediately. (os error 10035)
+                            Err(error) => {
+    
+                                match error {
+                                    tungstenite::Error::ConnectionClosed => todo!(),
+                                    tungstenite::Error::AlreadyClosed => todo!(),
+                                    tungstenite::Error::Io(io_error) => {
+                                        match io_error.kind() {
+  
+                                            std::io::ErrorKind::WouldBlock => {
+                                                println!("would've blocked!");
+                                                continue 'send_attempt;
+                                            },
+            
+                                            _ => todo!("unhandled io error when relaying update data to client: {}", io_error),
+                                        }
+                                    },
+                                    _ => {todo!("unhandled error when relaying update data to client: {}", error)}
+                                }
+                                
+        
+                            },
+                        }
                     }
+                    
+                    
     
                 }
 
