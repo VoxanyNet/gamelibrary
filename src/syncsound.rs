@@ -26,7 +26,7 @@ impl Sounds {
         self.listener_position = new_listener_position
     }
 
-    pub fn sync_sound(&mut self, sound_handle: &SoundHandle) {
+    pub fn sync_sound(&mut self, sound_handle: &mut SoundHandle) {
         // if the sound doesn't already exist on the client side we create it
         let client_sound = match self.sounds.get_mut(&sound_handle.id) {
             Some(client_sound) => {
@@ -68,6 +68,12 @@ impl Sounds {
             client_sound.set_position(new_position_relative_to_listener);
         }
 
+        // this is a situation where the sound sync goes the other way
+        // the client tells the sound handle to update to stopped state, meaning that we have reached the end of playback
+        if client_sound.get_state() == ears::State::Stopped {
+            sound_handle.state = SoundState::Stopped;
+        }
+
         // convert gamestate side sound state to client side sound state
         let sound_state: ears::State = sound_handle.state.clone().into();
 
@@ -80,10 +86,12 @@ impl Sounds {
                 },
                 ears::State::Paused => {
                     client_sound.pause();
-                },
+                }
                 ears::State::Stopped => {
-                    client_sound.stop();
-                },
+                    // we don't do anything if the handle is set to stopped
+                    // this is because clients wont be perfectly synced and we don't want to cut off a client sound early
+                    // the Stopped state means that the sound has FINISHED playing. we use Paused if we want to explicitly pause the sound on all clients
+                }
             }
         }
 
