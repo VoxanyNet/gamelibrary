@@ -100,7 +100,7 @@ impl Clone for Space {
             physics_hooks: self.physics_hooks.clone(),
             event_handler,
             collision_recv,
-            last_step: web_time::Instant::now()
+            last_step: Instant::now()
         }
     }
 }
