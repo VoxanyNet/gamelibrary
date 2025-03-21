@@ -1,5 +1,5 @@
 
-use macroquad::color::{RED, WHITE};
+use macroquad::color::{Color, RED, WHITE};
 use macroquad::input::{self, is_key_down, is_mouse_button_down, is_mouse_button_pressed};
 use macroquad::math::{vec2, Rect, Vec2};
 use macroquad::shapes::{draw_rectangle, draw_rectangle_ex, DrawRectangleParams};
@@ -15,7 +15,7 @@ use crate::space::Space;
 use crate::{rapier_mouse_world_pos, rapier_to_macroquad};
 use crate::texture_loader::TextureLoader;
 
-pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_handle: ColliderHandle) {
+pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_handle: ColliderHandle, color: Color) {
     let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
     let collider = space.collider_set.get(collider_handle).unwrap();
 
@@ -189,7 +189,7 @@ pub trait HasPhysics {
     }
 
     fn draw_hitbox(&self, space: &Space) {
-        draw_hitbox(space, *self.rigid_body_handle(), *self.collider_handle());
+        draw_hitbox(space, *self.rigid_body_handle(), *self.collider_handle(), WHITE);
 
     }
     async fn draw_texture(

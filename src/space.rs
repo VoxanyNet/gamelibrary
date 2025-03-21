@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use diff::Diff;
 use nalgebra::vector;
@@ -26,6 +26,8 @@ pub struct Space {
     pub physics_hooks: (),
     #[serde(skip)]
     pub event_handler: ChannelEventCollector,
+    #[serde(skip)]
+    pub last_step: Instant
 }
 
 impl<'de> Deserialize<'de> for Space {
@@ -69,7 +71,8 @@ impl<'de> Deserialize<'de> for Space {
             ccd_solver: helper.ccd_solver,
             query_pipeline: helper.query_pipeline,
             event_handler,
-            physics_hooks: ()
+            physics_hooks: (),
+            last_step: Instant::now()
         })
     }
 }
@@ -96,7 +99,8 @@ impl Clone for Space {
             query_pipeline: self.query_pipeline.clone(),
             physics_hooks: self.physics_hooks.clone(),
             event_handler,
-            collision_recv
+            collision_recv,
+            last_step: web_time::Instant::now()
         }
     }
 }
@@ -134,6 +138,7 @@ impl Space {
         let ccd_solver = CCDSolver::new();
         let query_pipeline = QueryPipeline::new();
         let physics_hooks = ();
+        let last_step = Instant::now();
 
         Self { 
             rigid_body_set, 
@@ -150,17 +155,27 @@ impl Space {
             query_pipeline, 
             physics_hooks, 
             event_handler,
-            collision_recv
+            collision_recv,
+            last_step
         }
     }
 
-    pub fn step(&mut self, dt: Duration, owned_rigid_bodies: &Vec<RigidBodyHandle>, owned_colliders: &Vec<ColliderHandle>) {
-        
+    pub fn step(&mut self, owned_rigid_bodies: &Vec<RigidBodyHandle>, owned_colliders: &Vec<ColliderHandle>, dt: &web_time::Instant) {
+
+
+        // only step space every 1/60th of a second
+        if self.last_step.elapsed().as_micros() < 8330 {
+            return;
+        }
+
+        self.last_step = Instant::now();
+
+        self.integration_parameters.dt = 1./120.;
+
+        //self.last_step = web_time::Instant::now();
         // any colliders/bodies we do not own we will return to their original state here
         let rigid_body_set_before = self.rigid_body_set.clone();
         let collider_set_before = self.collider_set.clone();
-
-        self.integration_parameters.dt = dt.as_secs_f32();
         
 
         for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
