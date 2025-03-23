@@ -128,7 +128,9 @@ impl Space {
     
         /* Create other structures necessary for the simulation. */
         let gravity = vector![0.0, 0.];
-        let integration_parameters = IntegrationParameters::default();
+        let mut integration_parameters = IntegrationParameters::default();
+
+        integration_parameters.max_ccd_substeps = 100;
         let physics_pipeline = PhysicsPipeline::new();
         let island_manager = IslandManager::new();
         let broad_phase = DefaultBroadPhase::new();
@@ -160,17 +162,11 @@ impl Space {
         }
     }
 
-    pub fn step(&mut self, owned_rigid_bodies: &Vec<RigidBodyHandle>, owned_colliders: &Vec<ColliderHandle>, dt: &web_time::Instant) {
-
-
-        // only step space every 1/60th of a second
-        if self.last_step.elapsed().as_micros() < 8330 {
-            return;
-        }
+    pub fn step(&mut self, owned_rigid_bodies: &Vec<RigidBodyHandle>, owned_colliders: &Vec<ColliderHandle>, dt: &Instant) {
 
         self.last_step = Instant::now();
 
-        self.integration_parameters.dt = 1./120.;
+        self.integration_parameters.dt = dt.elapsed().as_secs_f32();
 
         //self.last_step = web_time::Instant::now();
         // any colliders/bodies we do not own we will return to their original state here

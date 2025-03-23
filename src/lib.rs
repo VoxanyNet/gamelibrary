@@ -1,6 +1,6 @@
 
 use core::fmt;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, time::{SystemTime, UNIX_EPOCH}};
 
 use diff::Diff;
 use ears::{AudioController, SoundData, State, Tags};
@@ -77,8 +77,8 @@ pub fn draw_texture_rapier(
     );
 }
 pub fn current_unix_millis() -> u64 {
-    web_time::SystemTime::now()
-        .duration_since(web_time::UNIX_EPOCH)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_millis() as u64
 }
