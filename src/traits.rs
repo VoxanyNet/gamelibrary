@@ -19,11 +19,9 @@ pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_h
     let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
     let collider = space.collider_set.get(collider_handle).unwrap();
 
-    // use the shape to define how large we should draw the texture
-    // maybe we should change this
     let shape = collider.shape().as_cuboid().unwrap();
 
-    let position = rigid_body.position().translation;
+    let position = collider.position().translation;
     let rotation = rigid_body.rotation().angle();
 
     let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
