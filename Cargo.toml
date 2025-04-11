@@ -13,7 +13,7 @@ lz4_flex = "0.11.3"
 macroquad = {git = "https://github.com/VoxanyNet/macroquad", rev = "73db4a93f90f41942995ef757499ed61f3ff6085"}
 nalgebra = {git = "https://github.com/VoxanyNet/nalgebra", rev = "c57d898ac19a01ac5ad2d6da5f98dea91257ac9e"}
 rand = "0.8.5"
-rapier2d = { git = "https://github.com/VoxanyNet/rapier", rev = "fa5093de33c05e2c6a21033a92cc615eab9856a9", features = ["serde-serialize"] }
+rapier2d = { git = "https://github.com/VoxanyNet/rapier", rev = "9e9bdff66f7d46202b73bc8f09ee91a0dc2901f8", features = ["serde-serialize"] }
 #rapier2d = {path = "../rapier/crates/rapier2d", features = ["serde-serialize"]}
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.128"
