@@ -24,6 +24,7 @@ getrandom = { version = "0.2.15", features = ["js"] }
 web-sys = { version = "0.3.72", features = ["WebSocket", "console"] }
 wasm-bindgen-futures = "0.4.45"
 ears = "0.8.0"
+futures = "0.3.31"
 
 
 [[bin]]
