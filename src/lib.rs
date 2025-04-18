@@ -21,6 +21,7 @@ pub mod animation;
 pub mod animation_loader;
 pub mod swapiter;
 pub mod syncsound;
+pub mod arenaiter;
 
 pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
 
