@@ -23,8 +23,11 @@ uuid = { version = "1.8.0", features = ["v4"] }
 getrandom = { version = "0.2.15", features = ["js"] }
 web-sys = { version = "0.3.72", features = ["WebSocket", "console"] }
 wasm-bindgen-futures = "0.4.45"
-ears = "0.8.0"
+ears = {version = "0.8.0", optional = true}
 futures = "0.3.31"
+
+[features]
+3d-audio = ["ears"]
 
 
 [[bin]]

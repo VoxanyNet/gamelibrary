@@ -3,7 +3,6 @@ use core::fmt;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, time::{SystemTime, UNIX_EPOCH}};
 
 use diff::Diff;
-use ears::{AudioController, SoundData, State, Tags};
 use fxhash::FxHashMap;
 use macroquad::{camera::Camera2D, color::Color, input::mouse_position, math::{vec2, Rect, Vec2, Vec3}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}, window::screen_height};
 use rapier2d::prelude::ColliderHandle;
@@ -20,8 +19,8 @@ pub mod sync;
 pub mod animation;
 pub mod animation_loader;
 pub mod swapiter;
-pub mod syncsound;
 pub mod arenaiter;
+pub mod sound;
 
 pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
 

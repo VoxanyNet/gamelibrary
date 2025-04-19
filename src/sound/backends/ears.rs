@@ -1,20 +1,23 @@
-use std::{cell::{Ref, RefCell}, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use diff::Diff;
+use crate::sound::soundmanager::{SoundHandle, SoundManager, SoundState};
+
+#[cfg(feature = "3d-audio")]
 use ears::{AudioController, SoundData};
-use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "3d-audio")]
 /// Holds all sounds for client side
-pub struct Sounds {
+pub struct EarsSoundManager {
     sounds: HashMap<u64, ears::Sound>,
     // store sound data that corresponds to filename
     sound_data: HashMap<String, Rc<RefCell<SoundData>>>,
     listener_position: [f32; 3]
 }
 
-impl Sounds {
+#[cfg(feature = "3d-audio")]
+impl SoundManager for EarsSoundManager {
 
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             sounds: HashMap::new(),
             sound_data: HashMap::new(),
@@ -22,11 +25,11 @@ impl Sounds {
         }
     }
 
-    pub fn update_listener_position(&mut self, new_listener_position: [f32; 3]) {
+    fn update_listener_position(&mut self, new_listener_position: [f32; 3]) {
         self.listener_position = new_listener_position
     }
 
-    pub fn sync_sound(&mut self, sound_handle: &mut SoundHandle) {
+    fn sync_sound(&mut self, sound_handle: &mut SoundHandle) {
         // if the sound doesn't already exist on the client side we create it
         let client_sound = match self.sounds.get_mut(&sound_handle.id) {
             Some(client_sound) => {
@@ -97,62 +100,5 @@ impl Sounds {
 
         
 
-    }
-}
-
-
-#[derive(Serialize, Deserialize, Diff, PartialEq, Clone)]
-#[diff(attr(
-    #[derive(Serialize, Deserialize)]
-))]
-pub enum SoundState {
-    Initial,
-    Playing,
-    Paused,
-    Stopped
-}
-
-impl Into<ears::State> for SoundState {
-    fn into(self) -> ears::State {
-        match self {
-            SoundState::Initial => ears::State::Initial,
-            SoundState::Playing => ears::State::Playing,
-            SoundState::Paused => ears::State::Paused,
-            SoundState::Stopped => ears::State::Stopped,
-        }
-    }
-}
-
-
-/// Synced structure for holding a sound's world position, volume, offset which will we sync with the client's client side sound
-#[derive(Serialize, Deserialize, Diff, PartialEq, Clone)]
-#[diff(attr(
-    #[derive(Serialize, Deserialize)]
-))]
-pub struct SoundHandle {
-    state: SoundState,
-    position: [f32; 3],
-    // id is used to match the sound handle with their client side counterpart
-    id: u64,
-    file_path: String
-
-}
-
-impl SoundHandle {
-    pub fn new(file_path: &str, position: [f32; 3]) -> Self {
-        Self {
-            state: SoundState::Initial,
-            position,
-            id: uuid::Uuid::new_v4().as_u128() as u64,
-            file_path: file_path.to_string(),
-        }
-    }
-
-    pub fn play(&mut self) {
-        self.state = SoundState::Playing
-    }
-
-    pub fn pause(&mut self) {
-        self.state = SoundState::Paused
     }
 }
