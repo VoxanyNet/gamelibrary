@@ -1,15 +1,15 @@
 use rapier2d::data::{arena::Entry, Arena};
 
-pub struct ArenaIterator<T> {
+pub struct ArenaIterator<'a, T> {
     next_index: Option<usize>, // where the next occupied entry is
     restore_index: usize, // the index where the currently removed value needs to be restored to
     restore_generation: u32, // the generation of the last entry we removed
-    arena: Arena<T>,
+    arena: &'a mut Arena<T>,
 }
 
-impl<T> ArenaIterator<T> {
+impl<'a, T> ArenaIterator<'a, T> {
 
-    pub fn new(mut arena: Arena<T>) -> (Self, T) 
+    pub fn new(arena: &'a mut Arena<T>) -> (Self, T) 
     {
 
         let mut index = 0;
