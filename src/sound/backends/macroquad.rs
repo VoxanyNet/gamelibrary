@@ -30,6 +30,8 @@ impl SoundManager for MacroquadSoundManager {
             return;
         };
 
+        self.sounds.insert(sound_handle.id);
+
         let sound = match self.sound_data.get(&sound_handle.file_path) {
             Some(sound) => sound,
             None => {
