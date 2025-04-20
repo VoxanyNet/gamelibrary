@@ -25,6 +25,11 @@ impl SoundManager for MacroquadSoundManager {
 
     fn sync_sound(&mut self, sound_handle: &mut crate::sound::soundmanager::SoundHandle) {
 
+        // only play the sound if the state is Playing
+        match sound_handle.state {
+            crate::sound::soundmanager::SoundState::Playing => {},
+            _ => return
+        }
         // check if we've already played this sound
         if self.sounds.contains(&sound_handle.id) {
             return;
