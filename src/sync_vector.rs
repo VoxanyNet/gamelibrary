@@ -16,7 +16,7 @@ impl SyncIndex {
         }
     }
 }
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SyncVector<T> {
     sync_map: HashMap<SyncIndex, usize>, // map sync id to local indices
     vec: Vec<T>
