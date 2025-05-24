@@ -19,7 +19,7 @@ impl SyncIndex {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 struct SyncVector<T> {
     sync_map: HashMap<SyncIndex, usize>, // map sync id to local indices
-    pub vec: Vec<T>
+    vec: Vec<T>
 }
 
 impl<T> SyncVector<T> {
@@ -28,6 +28,10 @@ impl<T> SyncVector<T> {
             sync_map: HashMap::new(),
             vec: Vec::new(),
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.vec.len()
     }
 
     pub fn get(&self, sync_index: SyncIndex) -> Option<&T> {
@@ -52,7 +56,7 @@ impl<T> SyncVector<T> {
         }
     }
 
-    pub fn insert(&mut self, item: T) -> SyncIndex {
+    pub fn push(&mut self, item: T) -> SyncIndex {
 
         let local_index = self.vec.len();
 
