@@ -1,6 +1,7 @@
 use diff::Diff;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 use std::{cmp, u32, u64};
 use std::collections::{HashMap, HashSet};
 use std::iter::{self, Extend, FromIterator, FusedIterator};
@@ -133,6 +134,7 @@ where
     fn apply(&mut self, diff: &Self::Repr) {
         // THIS IS WHERE THE SYNC IDs REALLY MATTER
 
+        println!("{:?}", &diff.removed);
         diff.removed.iter().for_each(|deleted_sync_index| {
             let (client_index, client_generation) = self.sync_index_map.get(deleted_sync_index).unwrap(); // we might actually want to check this if its already been deleted
             self.remove(Index::from_raw_parts(*client_index, *client_generation, *deleted_sync_index));
@@ -504,6 +506,16 @@ impl<T> SyncArena<T> {
             Err(value) => self.insert_slow_path(value),
         };
 
+        let then = Instant::now();
+
+        // This is a band-aid fix but its only about 1 microsecond
+        // the entry itself contains the sync id but the internal insertion methods dont have a way of passing a sync id manually yet 
+        if let Entry::Occupied { generation, sync_id: old_sync_id, value } = &mut self.items[index.index as usize] {
+            *old_sync_id = sync_id
+        }
+
+        println!("{:?}", then.elapsed());
+
         index.sync_id = sync_id;
 
 
@@ -596,6 +608,10 @@ impl<T> SyncArena<T> {
                         sync_id,
                     } => {
 
+                        println!("{:?}", self.sync_index_map);
+
+                        println!("{:?}", &sync_id);
+                        
                         self.sync_index_map.remove(&sync_id).expect("could not find sync index in sync_index map when removing");
 
                         Some(value)
