@@ -1,183 +1,130 @@
-use rapier2d::data::{arena::Entry, Arena};
+use crate::sync_arena::{SyncArena, Entry};
 
-pub struct ArenaIterator<T> {
-    next_index: Option<usize>, // where the next occupied entry is
-    restore_index: usize, // the index where the currently removed value needs to be restored to
-    restore_generation: u32, // the generation of the last entry we removed
-    arena: Arena<T>,
+pub struct SyncArenaIterator<'a, T> {
+
+    index: usize, // the index of the currently removed entry
+    first: bool, // is this dumb?? we need to check if this is the first element for the first .next()
+    restore_generation: u32, // the generation of the currently removed entry
+    restore_sync_id: u64, // the sync id of the currently removed entry
+    arena: &'a mut SyncArena<T>,
+    restored: bool // was the previously removed value restored
 }
 
-impl<T> ArenaIterator<T> {
+impl<'a, T> SyncArenaIterator<'a, T> {
 
-    pub fn new(mut arena: Arena<T>) -> (Self, T) 
-    {
+    /// Find the first valid entry, starting at specified index
+    fn find_next_entry(items: &Vec<Entry<T>>, mut index: usize) -> Option<usize> {
+        
+        loop {
 
-        let mut index = 0;
-
-        // loop until we find the first element
-        let first_value: T = loop {
-
-            let has_value = match &arena.items[index] {
-                Entry::Occupied { generation: _, value: _ } => {
-                    true
-                },
-                _ => {
-                    false
-                }
-            };
-    
-            if !has_value {
-    
-                index += 1;
-                
-                continue;
-            }
-    
-            // replace the entry with a free entry, but dont update the free list head yet (we will do that only if the user decides not to restore the value)
-            let entry = std::mem::replace(
-                &mut arena.items[index], 
-                Entry::Free { next_free: Some(u32::MAX) } // set next free as max just in case
-            );
-
-            //println!("{:?}", &mut arena.items[index]);
-    
-            let value = match entry {
-                Entry::Free { next_free: _ } => unreachable!(), // we already identified this entry as occupied
-                Entry::Occupied { generation: _, value } => {
-                    value
-                },
-            };
-
-            break value
-
-        }; 
-
-        arena.len -= 1;
-
-        let mut next_index = 0;
-
-        // loop until we find the next index if any
-        let next_index: Option<usize> = loop {
-
-            if next_index >= arena.items.len() {
+            if index >= items.len() {
                 break None;
             }
-
-            match &arena.items[next_index] {
-                Entry::Occupied { generation: _, value: _ } => {
-
-                    break Some(next_index);
+            
+            match &items[index] {
+                Entry::Occupied { generation: _, value: _, sync_id: _} => {
+                    return Some(index)
                 },
-                Entry::Free { next_free: _ } => {
-                    next_index += 1;
+                _ => {
+                    index +=1;
 
                     continue;
                 }
             };
 
+        }
+        
+    }
 
-        };  
-
-        //std::fs::write("new.json", serde_json::to_string_pretty(&arena).unwrap()).unwrap();
+    pub fn new(arena: &'a mut SyncArena<T>) -> Self {
 
         let iterator = Self {
-            restore_index: index,
+            index: 0,
+            first: true,
             arena,
-            restore_generation: 0,
-            next_index
+            restore_generation: 0, // this too,
+            restore_sync_id: 0,
+            restored: true // initial is true because nothing has been removed
         };
 
-        
-
-        (iterator, first_value)
-
+        iterator
 
     }
 
-    pub fn next(&mut self, value_to_restore: Option<T>) -> Option<T> {
+    pub fn restore(&mut self, item: T) {
 
-        //let then_restore_value = Instant::now();
-        match value_to_restore {
-            Some(value) => {
-                self.arena.items[self.restore_index] = Entry::Occupied {
-                    generation: self.restore_generation, 
-                    value
-                };
 
-                self.arena.len += 1;
-            },
-            None => {
+        self.arena.items[self.index] = Entry::Occupied { 
+            generation: self.restore_generation, 
+            value: item,
+            sync_id: self.restore_sync_id
+        };
 
-                //println!("{:?}", self.arena.free_list_head);
-                // properly mark the entry as being removed and free
-                self.arena.items[self.restore_index] = Entry::Free { next_free: self.arena.free_list_head };
+        // only increase the length of the arena if we didn't already restore
+        if !self.restored {
+            self.arena.len += 1;
+        }
 
+        self.restored = true;
+
+    }
+
+    pub fn next(&mut self) -> Option<(T, &mut SyncArena<T>)> {
+
+        match self.restored {
+            true => {},
+            false => {
+                
+                // arena generation increments when an element is removed
                 self.arena.generation += 1;
-                self.arena.free_list_head = Some(self.restore_index as u32);
-        
+
+                 // the free list head could have changed between the time the item was removed and restored
+                self.arena.items[self.index] = Entry::Free { next_free: self.arena.free_list_head };
+
+                // update the free list head to tell the arena its safe to reclaim the index
+                self.arena.free_list_head = Some(self.index as u32);
             },
         }
 
-        //println!("restore item: {:?}", then_restore_value.elapsed());
+        // if this is the first .next(), we want to start our search from 0, but if its not, we want to search AFTER the current index (or else we would just get the same value)
+        if !self.first {
+            self.index += 1;
+        }
+        else {
+            self.first = false // now we can update self.first for the next .next()
+        }
 
-        let mut next_index = match self.next_index {
+        self.index = match SyncArenaIterator::find_next_entry(&self.arena.items, self.index) {
             Some(next_index) => next_index,
-            None => return None,
+            None => return None, // there are no more occupied entries in the arena
         };
-
-        //let then_replace_with_dummy = Instant::now();
 
         // replace the entry with a free entry, but dont update the free list head yet (we will do that only if the user decides not to restore the value)
         let entry = std::mem::replace(
-            &mut self.arena.items[next_index], 
+            &mut self.arena.items[self.index], 
             Entry::Free { next_free: Some(u32::MAX) } // set next free as max just in case
         );
 
-        //println!("dummy swap: {:?}", then_replace_with_dummy.elapsed());
-
         self.arena.len -= 1;
-
+        
+        // get the actual value out of the entry to make it easier for the user
         let value = match entry {
             Entry::Free { next_free: _ } => unreachable!(), // we already identified this entry as occupied
-            Entry::Occupied { generation, value } => {
-                //println!("generation: {}", generation);
+            Entry::Occupied { generation, value, sync_id } => {
+                
                 self.restore_generation = generation;
+                self.restore_sync_id = sync_id;
+
                 value
+                
             },
         };
 
-        self.restore_index = self.next_index.unwrap();
+        self.restored = false;
 
-        //let then_find_next = Instant::now();
-
-        // loop until we find the next occupied index (for the next .next())
-        self.next_index = loop {
-
-            if next_index >= self.arena.items.len() {
-                break None
-            }
-            match &self.arena.items[next_index] {
-                Entry::Occupied { generation: _, value: _ } => {
-                    break Some(next_index)
-
-                },
-                Entry::Free { next_free: _ } => {
-
-                    // check the next entry
-                    next_index += 1;
-
-                    continue;
-                }
-            };
-
-    
-        };
-
-        //println!("time to find next value: {:?}", then_find_next.elapsed());
-
-        return Some(value)
-
-
+        return Some((value, self.arena))
         
     }
+
+    
 }

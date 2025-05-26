@@ -1,5 +1,3 @@
-
-use core::fmt;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, time::{SystemTime, UNIX_EPOCH}};
 
 use diff::Diff;
@@ -21,7 +19,7 @@ pub mod animation_loader;
 pub mod swapiter;
 pub mod arenaiter;
 pub mod sound;
-pub mod sync_vector;
+pub mod sync_arena;
 
 pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
 
