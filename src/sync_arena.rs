@@ -160,7 +160,7 @@ where
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize )]
 pub enum Entry<T> {
     Free { next_free: Option<u32> },
     Occupied { generation: u32, sync_id: u64, value: T },

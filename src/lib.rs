@@ -5,7 +5,7 @@ use fxhash::FxHashMap;
 use macroquad::{camera::Camera2D, color::Color, input::mouse_position, math::{vec2, Rect, Vec2, Vec3}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}, window::screen_height};
 use rapier2d::prelude::ColliderHandle;
 use serde::{de::{self, MapAccess, Visitor}, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
-use space::Space;
+use space::{Space, SyncColliderHandle};
 
 pub mod timeline;
 pub mod time;
@@ -34,8 +34,8 @@ pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
 }
 
 /// Get the relative top left of a collider
-pub fn collider_top_left_pos(space: &Space, collider_handle: ColliderHandle) -> Vec2 {
-    let collider = space.collider_set.get(collider_handle).unwrap();
+pub fn collider_top_left_pos(space: &Space, collider_handle: SyncColliderHandle) -> Vec2 {
+    let collider = space.sync_collider_set.get_sync(collider_handle).unwrap();
 
     let shape = collider.shape().as_cuboid().unwrap();
 
