@@ -56,6 +56,14 @@ impl SyncRigidBodySet {
         }
     }
 
+    pub fn get_local(&self, handle: RigidBodyHandle) -> Option<&RigidBody> {
+        self.rigid_body_set.get(handle)
+    }
+    
+    pub fn get_local_mut(&mut self, handle: RigidBodyHandle) -> Option<&mut RigidBody> {
+        self.rigid_body_set.get_mut(handle)
+    }
+
     pub fn insert_sync(&mut self, rb: impl Into<RigidBody>) -> SyncRigidBodyHandle {
 
         let sync_handle = SyncRigidBodyHandle::new();
@@ -153,6 +161,14 @@ impl SyncColliderSet {
         self.sync_map.insert(sync_handle, local_handle);
 
         sync_handle
+    }
+
+    pub fn get_local(&self, handle: ColliderHandle) -> Option<&Collider> {
+        self.collider_set.get(handle)
+    }
+
+    pub fn get_local_mut(&mut self, handle: ColliderHandle) -> Option<&mut Collider> {
+        self.collider_set.get_mut(handle)
     }
 
     pub fn insert_sync_known_handle(&mut self, coll: impl Into<Collider>, sync_handle: SyncColliderHandle) -> SyncColliderHandle {
@@ -386,7 +402,7 @@ impl Space {
         let collider_set_before = self.sync_collider_set.collider_set.clone();
         
 
-        for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
+        for (rigid_body_handle, rigid_body) in self.sync_rigid_body_set.rigid_body_set.iter_mut() {
 
             // this is a temporary workaround but i think we are failing to sync sleep states
             rigid_body.wake_up(true);   
@@ -414,7 +430,7 @@ impl Space {
         );
         //println!("time: {:?}", self.);
         
-        for (rigid_body_handle, rigid_body) in self.rigid_body_set.iter_mut() {
+        for (rigid_body_handle, rigid_body) in self.sync_rigid_body_set.rigid_body_set.iter_mut() {
             if owned_rigid_bodies.contains(&rigid_body_handle) {
                 continue;
             }
@@ -426,7 +442,7 @@ impl Space {
          
         }
 
-        for (collider_handle, _collider) in self.collider_set.iter_mut() {
+        for (collider_handle, _collider) in self.sync_collider_set.collider_set.iter_mut() {
             if owned_colliders.contains(&collider_handle) {
                 continue;
             }
@@ -510,7 +526,7 @@ impl Diff for Space {
 
         // RIGID BODIES
         if other.sync_rigid_body_set.rigid_body_set != self.sync_rigid_body_set.rigid_body_set {
-            for (sync_rigid_body_handle, local_rigid_body_handle) in self.sync_rigid_body_set.sync_map {
+            for (sync_rigid_body_handle, local_rigid_body_handle) in &self.sync_rigid_body_set.sync_map {
     
                 match other.sync_rigid_body_set.sync_map.get(&sync_rigid_body_handle) {
                     
@@ -518,7 +534,7 @@ impl Diff for Space {
                     Some(other_local_rigid_body_handle) => {
                         
                         // we can just fetch the rigid body using the local handle i think it is faster this way
-                        let rigid_body = self.sync_rigid_body_set.rigid_body_set.get(local_rigid_body_handle).unwrap();
+                        let rigid_body = self.sync_rigid_body_set.rigid_body_set.get(*local_rigid_body_handle).unwrap();
 
                         // i dont think we technically need to use other_local_rigid_body because the local handle should not change for a given sync handle
                         let other_rigid_body  = other.sync_rigid_body_set.rigid_body_set.get(*other_local_rigid_body_handle).unwrap();
@@ -572,7 +588,7 @@ impl Diff for Space {
                     
                     // rigid body has been removed
                     None => {
-                        diff.sync_rigid_body_set.removed.insert(sync_rigid_body_handle);
+                        diff.sync_rigid_body_set.removed.insert(*sync_rigid_body_handle);
                     },
                 }
             }
@@ -604,7 +620,7 @@ impl Diff for Space {
                             velocity: Some(*other_rigid_body.linvel()),
                             angular_velocity: Some(other_rigid_body.angvel()),
                             colliders: Some(sync_collider_handles.diff(&other_sync_collider_handles)),
-                        }
+                        };
 
                         diff.sync_rigid_body_set.altered.insert(
                             *other_sync_rigid_body_handle, 
@@ -617,13 +633,13 @@ impl Diff for Space {
         
         // COLLIDERS
         if other.sync_collider_set.collider_set != self.sync_collider_set.collider_set {
-            for (sync_collider_handle, local_collider_handle) in self.sync_collider_set.sync_map {
+            for (sync_collider_handle, local_collider_handle) in &self.sync_collider_set.sync_map {
     
                 match other.sync_collider_set.sync_map.get(&sync_collider_handle) {
                     
                     // the collider is in both Spaces
                     Some(other_collider_handle) => {
-                        let collider = self.sync_collider_set.collider_set.get(local_collider_handle).unwrap();
+                        let collider = self.sync_collider_set.collider_set.get(*local_collider_handle).unwrap();
 
                         let other_collider = other.sync_collider_set.collider_set.get(*other_collider_handle).unwrap();
 
@@ -654,13 +670,13 @@ impl Diff for Space {
                                 collider_diff.position = Some(*other_collider.position());
                             }
 
-                            diff.sync_collider_set.altered.insert(sync_collider_handle, collider_diff);
+                            diff.sync_collider_set.altered.insert(*sync_collider_handle, collider_diff);
                         }
 
                         
                     },
                     None => {
-                        diff.sync_collider_set.removed.insert(sync_collider_handle);
+                        diff.sync_collider_set.removed.insert(*sync_collider_handle);
                     },
                 }
             }
@@ -785,7 +801,7 @@ impl Diff for Space {
                         Some(parent) => {
                             let local_handle = self.sync_rigid_body_set.sync_map.get(&parent).unwrap();
 
-                            self.sync_collider_set.collider_set.set_parent(*local_collider_handle, Some(local_handle), &mut self.sync_rigid_body_set.rigid_body_set);
+                            self.sync_collider_set.collider_set.set_parent(*local_collider_handle, Some(*local_handle), &mut self.sync_rigid_body_set.rigid_body_set);
                         },
                         None => {},
                     }

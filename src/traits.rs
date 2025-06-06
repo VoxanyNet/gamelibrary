@@ -11,13 +11,13 @@ use rapier2d::math::Rotation;
 use rapier2d::pipeline::QueryFilter;
 use rapier2d::prelude::RigidBodyHandle;
 
-use crate::space::Space;
+use crate::space::{Space, SyncColliderHandle, SyncRigidBodyHandle};
 use crate::{rapier_mouse_world_pos, rapier_to_macroquad};
 use crate::texture_loader::TextureLoader;
 
-pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_handle: ColliderHandle, color: Color) {
-    let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
-    let collider = space.collider_set.get(collider_handle).unwrap();
+pub fn draw_hitbox(space: &Space, rigid_body_handle: SyncRigidBodyHandle, collider_handle: SyncColliderHandle, color: Color) {
+    let rigid_body = space.sync_rigid_body_set.get_sync(rigid_body_handle).unwrap();
+    let collider = space.sync_collider_set.get_sync(collider_handle).unwrap();
 
     let shape = collider.shape().as_cuboid().unwrap();
 
@@ -37,8 +37,8 @@ pub fn draw_hitbox(space: &Space, rigid_body_handle: RigidBodyHandle, collider_h
 }
 
 pub async fn draw_texture_onto_physics_body(
-    rigid_body_handle: RigidBodyHandle,
-    collider_handle: ColliderHandle,
+    rigid_body_handle: SyncRigidBodyHandle,
+    collider_handle: SyncColliderHandle,
     space: &Space, 
     texture_path: &String, 
     textures: &mut TextureLoader, 
@@ -46,8 +46,8 @@ pub async fn draw_texture_onto_physics_body(
     flip_y: bool, 
     additional_rotation: f32
 ) {
-    let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
-    let collider = space.collider_set.get(collider_handle).unwrap();
+    let rigid_body = space.sync_rigid_body_set.get_sync(rigid_body_handle).unwrap();
+    let collider = space.sync_collider_set.get_sync(collider_handle).unwrap();
 
     // use the shape to define how large we should draw the texture
     // maybe we should change this
@@ -77,8 +77,8 @@ pub async fn draw_texture_onto_physics_body(
 }
 
 pub trait HasPhysics {
-    fn collider_handle(&self) -> &ColliderHandle;
-    fn rigid_body_handle(&self) -> &RigidBodyHandle;
+    fn collider_handle(&self) -> &SyncColliderHandle;
+    fn rigid_body_handle(&self) -> &SyncRigidBodyHandle;
     fn selected(&self) -> &bool;
     fn selected_mut(&mut self) -> &mut bool;
     fn dragging(&mut self) -> &mut bool; // structure is currently being dragged
@@ -86,17 +86,18 @@ pub trait HasPhysics {
 
     fn remove_body_and_collider(&mut self, space: &mut Space) {
 
-        space.rigid_body_set.remove(*self.rigid_body_handle(), &mut space.island_manager, &mut space.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+        space.sync_rigid_body_set.remove_sync(*self.rigid_body_handle(), &mut space.island_manager, &mut space.sync_collider_set.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
     }
 
     fn contains_point(&mut self, space: &mut Space, point: Vec2) -> bool {
         let mut contains_point: bool = false;
 
-        space.query_pipeline.update(&space.collider_set);
+        space.query_pipeline.update(&space.sync_collider_set.collider_set);
 
+        let local_collider_handle = space.sync_collider_set.sync_map.get(self.collider_handle()).unwrap();
         space.query_pipeline.intersections_with_point(
-            &space.rigid_body_set, &space.collider_set, &point![point.x, point.y], QueryFilter::default(), |handle| {
-                if *self.collider_handle() == handle {
+            &space.sync_rigid_body_set.rigid_body_set, &space.sync_collider_set.collider_set, &point![point.x, point.y], QueryFilter::default(), |handle| {
+                if *local_collider_handle == handle {
                     contains_point = true;
                     return false
                 }
@@ -113,7 +114,7 @@ pub trait HasPhysics {
 
         if !is_key_down(input::KeyCode::R) {return}
 
-        let rigid_body = space.rigid_body_set.get_mut(*self.rigid_body_handle()).unwrap();
+        let rigid_body = space.sync_rigid_body_set.get_sync_mut(*self.rigid_body_handle()).unwrap();
         
         rigid_body.set_rotation(Rotation::from_angle(rigid_body.rotation().angle() - 0.05), true);
     }
@@ -123,8 +124,8 @@ pub trait HasPhysics {
         if !*self.selected() {
             return;
         }
-        let collider = space.collider_set.get_mut(*self.collider_handle()).unwrap();
-        let rigid_body = space.rigid_body_set.get_mut(*self.rigid_body_handle()).unwrap();
+        let collider = space.sync_collider_set.get_sync_mut(*self.collider_handle()).unwrap();
+        let rigid_body = space.sync_rigid_body_set.get_sync_mut(*self.rigid_body_handle()).unwrap();
 
         let shape = collider.shape_mut().as_cuboid_mut().unwrap();
 
@@ -162,8 +163,8 @@ pub trait HasPhysics {
     }
 
     async fn draw_outline(&self, space: &Space, outline_thickness: f32) {
-        let rigid_body = space.rigid_body_set.get(*self.rigid_body_handle()).unwrap();
-        let collider = space.collider_set.get(*self.collider_handle()).unwrap();
+        let rigid_body = space.sync_rigid_body_set.get_sync(*self.rigid_body_handle()).unwrap();
+        let collider = space.sync_collider_set.get_sync(*self.collider_handle()).unwrap();
 
         // use the shape to define how large we should draw the texture
         // maybe we should change this
@@ -239,7 +240,7 @@ pub trait HasPhysics {
 
         let drag_offset = self.drag_offset().unwrap(); // there shouldn't be a situation where get_dragging returns true and there is no drag offset
         
-        let collider = space.collider_set.get_mut(*self.collider_handle()).unwrap();
+        let collider = space.sync_collider_set.get_sync_mut(*self.collider_handle()).unwrap();
 
         let mouse_pos = rapier_mouse_world_pos(camera_rect);
 
@@ -249,7 +250,8 @@ pub trait HasPhysics {
         match &mut collider.parent() {
 
             Some(rigid_body_handle) => {
-                let rigid_body = space.rigid_body_set.get_mut(*rigid_body_handle).unwrap();
+
+                let rigid_body = space.sync_rigid_body_set.rigid_body_set.get_mut(*rigid_body_handle).unwrap();
 
                 rigid_body.set_position(vector![offset_mouse_pos.x, offset_mouse_pos.y].into(), true);
 
@@ -291,10 +293,12 @@ pub trait HasPhysics {
 
         let mut contains_mouse = false;
 
+        let local_collider_handle = space.sync_collider_set.sync_map.get(self.collider_handle()).unwrap();
         space.query_pipeline.intersections_with_point(
-            &space.rigid_body_set, &space.collider_set, &point![mouse_pos.x, mouse_pos.y], QueryFilter::default(), |handle| {
+            &space.sync_rigid_body_set.rigid_body_set, &space.sync_collider_set.collider_set, &point![mouse_pos.x, mouse_pos.y], QueryFilter::default(), |handle| {
                 
-                if *self.collider_handle() == handle {
+                
+                if *local_collider_handle == handle {
                     contains_mouse = true;
                     return false
                 }
@@ -309,12 +313,12 @@ pub trait HasPhysics {
         // at this point we know we will update dragging to true, but we want to check if this is a change from the last tick, so that we can set the mouse offset only when we begin dragging
         if !*self.dragging() {
 
-            let collider = space.collider_set.get(*self.collider_handle()).unwrap();
+            let collider = space.sync_collider_set.get_sync(*self.collider_handle()).unwrap();
 
             match collider.parent() {
 
                 Some(rigid_body_handle) => {
-                    let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
+                    let rigid_body = space.sync_rigid_body_set.get_local(rigid_body_handle).unwrap();
 
                     *self.drag_offset() = Some(
                         Vec2::new(mouse_pos.x - rigid_body.position().translation.x, mouse_pos.y - rigid_body.position().translation.y)
@@ -323,7 +327,7 @@ pub trait HasPhysics {
                 },
                 None => {
 
-                    let collider = space.collider_set.get(*self.collider_handle()).unwrap();
+                    let collider = space.sync_collider_set.get_sync(*self.collider_handle()).unwrap();
 
                     *self.drag_offset() = Some(
                         Vec2::new(mouse_pos.x - collider.position().translation.x, mouse_pos.y - collider.position().translation.y)
@@ -342,13 +346,13 @@ pub trait HasPhysics {
 
     async fn draw_collider(&self, space: &Space) {
         let collider_handle = self.collider_handle();
-        let collider = space.collider_set.get(*collider_handle).expect("Invalid collider handle");
+        let collider = space.sync_collider_set.get_sync(*collider_handle).expect("Invalid collider handle");
 
         // if the collider has a rigid body, then we use it's position instead
         let (position, rotation) = match collider.parent() {
             Some(rigid_body_handle) => {
                 
-                let rigid_body = space.rigid_body_set.get(rigid_body_handle).unwrap();
+                let rigid_body = space.sync_rigid_body_set.get_local(rigid_body_handle).unwrap();
 
                 (rigid_body.position(), rigid_body.rotation())
                 
