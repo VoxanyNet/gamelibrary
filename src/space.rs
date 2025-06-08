@@ -2,11 +2,11 @@ use std::{collections::{HashMap, HashSet}, time::{Duration, Instant}};
 
 use diff::{Diff, VecDiff};
 use nalgebra::{vector, Isometry2, Vector2};
-use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, Collider, ColliderBuilder, CollisionEvent, RigidBody, RigidBodyBuilder, SharedShape}};
+use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, Collider, ColliderBuilder, CollisionEvent, RigidBody, RigidBodyBuilder, RigidBodyType, SharedShape}};
 use serde::{Deserialize, Deserializer, Serialize};
 
 
-#[derive(Serialize, Deserialize, Hash, Clone, Copy, PartialEq, Eq, diff::Diff)]
+#[derive(Serialize, Deserialize, Hash, Clone, Copy, PartialEq, Eq, diff::Diff, Debug)]
 #[diff(attr(
     #[derive(Serialize, Deserialize)]
 ))]
@@ -22,7 +22,7 @@ impl SyncRigidBodyHandle {
     }
 }
 
-#[derive(Serialize, Deserialize, Hash, Clone, Copy, PartialEq, Eq, diff::Diff)]
+#[derive(Serialize, Deserialize, Hash, Clone, Copy, PartialEq, Eq, diff::Diff, Debug)]
 #[diff(attr(
     #[derive(Serialize, Deserialize)]
 ))]
@@ -54,6 +54,14 @@ impl SyncRigidBodySet {
             sync_map: HashMap::new(),
             reverse_sync_map: HashMap::new()
         }
+    }
+
+    pub fn get_local_handle(&self, sync_handle: SyncRigidBodyHandle) -> RigidBodyHandle {
+        self.sync_map.get(&sync_handle).unwrap().clone()
+    }
+
+    pub fn get_sync_handle(&self, local_handle: RigidBodyHandle) -> SyncRigidBodyHandle {
+        self.reverse_sync_map.get(&local_handle).unwrap().clone()
     }
 
     pub fn get_local(&self, handle: RigidBodyHandle) -> Option<&RigidBody> {
@@ -96,19 +104,17 @@ impl SyncRigidBodySet {
         multibody_joints:&mut MultibodyJointSet,
         remove_attached_colliders: bool  
     ) -> Option<RigidBody> {
-        let body = match self.sync_map.get(&handle) {
+        match self.sync_map.remove(&handle) {
+
+            
             Some(local_rigid_body_handle) => {
-                self.rigid_body_set.remove(*local_rigid_body_handle, islands, colliders, impulse_joints, multibody_joints, remove_attached_colliders)
+
+                self.reverse_sync_map.remove(&local_rigid_body_handle).unwrap();
+
+                self.rigid_body_set.remove(local_rigid_body_handle, islands, colliders, impulse_joints, multibody_joints, remove_attached_colliders)
             },
             None => None,
-        };
-
-        if let Some(_) = body {
-            let local_handle  = self.sync_map.remove(&handle);
-            self.reverse_sync_map.remove(&local_handle.unwrap());
         }
-        
-        body
     }
 
     pub fn get_sync_mut(&mut self, handle: SyncRigidBodyHandle) -> Option<&mut RigidBody> {
@@ -152,6 +158,14 @@ impl SyncColliderSet {
             reverse_sync_map: HashMap::new()
         }
     }
+
+    pub fn get_local_handle(&self, sync_handle: SyncColliderHandle) -> ColliderHandle {
+        self.sync_map.get(&sync_handle).unwrap().clone()
+    }
+
+    pub fn get_sync_handle(&self, local_handle: ColliderHandle) -> SyncColliderHandle {
+        self.reverse_sync_map.get(&local_handle).unwrap().clone()
+    }
     pub fn insert_sync(&mut self, coll: impl Into<Collider>) -> SyncColliderHandle {
         
         let sync_handle = SyncColliderHandle::new();
@@ -159,6 +173,7 @@ impl SyncColliderSet {
         let local_handle = self.collider_set.insert(coll.into());
 
         self.sync_map.insert(sync_handle, local_handle);
+        self.reverse_sync_map.insert(local_handle, sync_handle);
 
         sync_handle
     }
@@ -188,23 +203,33 @@ impl SyncColliderSet {
         bodies:&mut RigidBodySet,
         wake_up: bool
      ) -> Option<Collider> {
-        let collider = match self.sync_map.get(&handle) {
+        match self.sync_map.remove(&handle) {
             Some(local_collider_handle) => {
-                let collider = self.collider_set.remove(*local_collider_handle, islands, bodies, wake_up);
+
+                self.reverse_sync_map.remove(&local_collider_handle).unwrap();
+
+                let collider = self.collider_set.remove(local_collider_handle, islands, bodies, wake_up);
 
                 collider
             },
-            None => None,
-        };
-
-        if let Some(_) = collider {
-            let local_handle = self.sync_map.remove(&handle).unwrap();
-
-            self.reverse_sync_map.remove(&local_handle);
-
+            None => {
+                None
+            }
         }
-        
-        collider
+
+    }
+
+    pub fn insert_with_parent_sync(&mut self, coll: impl Into<Collider>,  sync_body_handle: SyncRigidBodyHandle, bodies: &mut SyncRigidBodySet) -> SyncColliderHandle {
+
+        let local_rigid_body_handle = bodies.sync_map.get(&sync_body_handle).unwrap();
+
+        let sync_handle = self.insert_sync(coll);
+
+        let local_handle = self.sync_map.get(&sync_handle).unwrap();
+
+        self.collider_set.set_parent(*local_handle, Some(*local_rigid_body_handle), &mut bodies.rigid_body_set);
+
+        sync_handle
     }
 
     pub fn get_sync_mut(&mut self, handle: SyncColliderHandle) -> Option<&mut Collider> {
@@ -228,6 +253,7 @@ impl SyncColliderSet {
             },
         }
     }
+
 }
 
 #[derive(Serialize)]
@@ -262,8 +288,8 @@ impl<'de> Deserialize<'de> for Space {
     {
         #[derive(Deserialize)]
         struct SpaceHelper {
-            rigid_body_set: SyncRigidBodySet,
-            collider_set: SyncColliderSet,
+            sync_rigid_body_set: SyncRigidBodySet,
+            sync_collider_set: SyncColliderSet,
             gravity: nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>,
             integration_parameters: IntegrationParameters,
             island_manager: IslandManager,
@@ -283,9 +309,9 @@ impl<'de> Deserialize<'de> for Space {
         let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
 
         Ok(Space {
-            sync_rigid_body_set: helper.rigid_body_set,
+            sync_rigid_body_set: helper.sync_rigid_body_set,
             collision_recv,
-            sync_collider_set: helper.collider_set,
+            sync_collider_set: helper.sync_collider_set,
             gravity: helper.gravity,
             integration_parameters: helper.integration_parameters,
             physics_pipeline: PhysicsPipeline::new(),
@@ -390,7 +416,7 @@ impl Space {
 
     
 
-    pub fn step(&mut self, owned_rigid_bodies: &Vec<RigidBodyHandle>, owned_colliders: &Vec<ColliderHandle>, dt: &Instant) {
+    pub fn step(&mut self, owned_rigid_bodies: &Vec<SyncRigidBodyHandle>, owned_colliders: &Vec<SyncColliderHandle>, dt: &Instant) {
 
         self.last_step = Instant::now();
 
@@ -406,7 +432,10 @@ impl Space {
 
             // this is a temporary workaround but i think we are failing to sync sleep states
             rigid_body.wake_up(true);   
-            if owned_rigid_bodies.contains(&rigid_body_handle) {
+
+            let sync_rigid_body_handle = self.sync_rigid_body_set.reverse_sync_map.get(&rigid_body_handle).unwrap();
+
+            if owned_rigid_bodies.contains(sync_rigid_body_handle) {
                 continue;
             }
 
@@ -431,7 +460,10 @@ impl Space {
         //println!("time: {:?}", self.);
         
         for (rigid_body_handle, rigid_body) in self.sync_rigid_body_set.rigid_body_set.iter_mut() {
-            if owned_rigid_bodies.contains(&rigid_body_handle) {
+
+            let sync_rigid_body_handle = self.sync_rigid_body_set.reverse_sync_map.get(&rigid_body_handle).unwrap();
+
+            if owned_rigid_bodies.contains(sync_rigid_body_handle) {
                 continue;
             }
 
@@ -442,16 +474,19 @@ impl Space {
          
         }
 
-        for (collider_handle, _collider) in self.sync_collider_set.collider_set.iter_mut() {
-            if owned_colliders.contains(&collider_handle) {
-                continue;
-            }
+        // for (collider_handle, _collider) in self.sync_collider_set.collider_set.iter_mut() {
 
-            let _collider_before = collider_set_before.get(collider_handle).expect("Unable to find old version of collider before it was updated");
+        //     let sync_collider_handle = self.sync_collider_set.reverse_sync_map.get(&collider_handle).unwrap();
 
-            // we should probably remove this instead of cloning?
-            //*collider = collider_before.clone();
-        }
+        //     if owned_colliders.contains(sync_collider_handle) {
+        //         continue;
+        //     }
+
+        //     let _collider_before = collider_set_before.get(collider_handle).expect("Unable to find old version of collider before it was updated");
+
+        //     // we should probably remove this instead of cloning?
+        //     //*collider = collider_before.clone();
+        // }
 
     }
     
@@ -475,7 +510,8 @@ pub struct RigidBodyDiff {
     pub velocity: Option<Vector2<f32>>,
     pub angular_velocity: Option<f32>,
     // consider adding RigidBodyForces here! and other stuff
-    pub colliders: Option<VecDiff<SyncColliderHandle>>
+    pub colliders: Option<VecDiff<SyncColliderHandle>>,
+    pub body_type: Option<RigidBodyType>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -547,9 +583,13 @@ impl Diff for Space {
                                 velocity: None,
                                 angular_velocity: None,
                                 colliders: None,
+                                body_type: None
                             };
 
+                            
                             if other_rigid_body.position() != rigid_body.position() {
+
+                                //println!("{:?} changed its position to: x: {:?}, y: {:?}", sync_rigid_body_handle, other_rigid_body.position().translation.x, other_rigid_body.position().translation.y);
                                 rigid_body_diff.position = Some(*other_rigid_body.position());
                             }
 
@@ -583,11 +623,20 @@ impl Diff for Space {
 
 
                             }
+                            
+                            if other_rigid_body.body_type() != rigid_body.body_type() {
+                                rigid_body_diff.body_type = Some(other_rigid_body.body_type())
+                            }
+
+                            diff.sync_rigid_body_set.altered.insert(*sync_rigid_body_handle, rigid_body_diff);
                         }
                     },
                     
                     // rigid body has been removed
                     None => {
+
+                        //println!("{:?} has been removed", sync_rigid_body_handle);
+
                         diff.sync_rigid_body_set.removed.insert(*sync_rigid_body_handle);
                     },
                 }
@@ -620,6 +669,7 @@ impl Diff for Space {
                             velocity: Some(*other_rigid_body.linvel()),
                             angular_velocity: Some(other_rigid_body.angvel()),
                             colliders: Some(sync_collider_handles.diff(&other_sync_collider_handles)),
+                            body_type: Some(other_rigid_body.body_type())
                         };
 
                         diff.sync_rigid_body_set.altered.insert(
@@ -741,12 +791,17 @@ impl Diff for Space {
 
 
         for (sync_rigid_body_handle, rigid_body_diff) in &diff.sync_rigid_body_set.altered {
+
+            //println!("APPLY {:?}", sync_rigid_body_handle);
             let rigid_body = match self.sync_rigid_body_set.get_sync_mut(*sync_rigid_body_handle) {
                 Some(existing_rigid_body) => existing_rigid_body,
                 None => {
                     // need to add new rigid body if it doesnt already exist
                     
-                    let rigid_body = RigidBodyBuilder::dynamic();
+                    let mut rigid_body = RigidBodyBuilder::dynamic().build();
+
+                    // rigid_body.lock_translations(true, true);
+                    // rigid_body.lock_rotations(true, true);
 
 
                     self.sync_rigid_body_set.insert_sync_known_handle(
@@ -762,6 +817,8 @@ impl Diff for Space {
             if let Some(position) = rigid_body_diff.position {
                 rigid_body.set_position(position, true);
 
+                //println!("{:?} applied position change to x: {:?}, y: {:?}", sync_rigid_body_handle, position.translation.x, position.translation.y);
+
             }
 
             if let Some(velocity) = rigid_body_diff.velocity {
@@ -770,6 +827,10 @@ impl Diff for Space {
 
             if let Some(angular_velocity) = rigid_body_diff.angular_velocity {
                 rigid_body.set_angvel(angular_velocity, true);
+            }
+
+            if let Some(body_type) = rigid_body_diff.body_type {
+                rigid_body.set_body_type(body_type, true);
             }
 
             // we attach the collider in a later step
