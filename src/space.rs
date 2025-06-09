@@ -278,7 +278,11 @@ pub struct Space {
     #[serde(skip)]
     pub event_handler: ChannelEventCollector,
     #[serde(skip)]
-    pub last_step: Instant
+    pub last_step: Instant,
+    #[serde(skip)]
+    pub owned_rigid_bodies: Vec<SyncRigidBodyHandle>,
+    #[serde(skip)]
+    pub owned_colliders: Vec<SyncColliderHandle>
 }
 
 impl<'de> Deserialize<'de> for Space {
@@ -324,7 +328,9 @@ impl<'de> Deserialize<'de> for Space {
             query_pipeline: helper.query_pipeline,
             event_handler,
             physics_hooks: (),
-            last_step: Instant::now()
+            last_step: Instant::now(),
+            owned_colliders: Vec::new(),
+            owned_rigid_bodies: Vec::new()
         })
     }
 }
@@ -353,6 +359,8 @@ impl Clone for Space {
             event_handler,
             collision_recv,
             last_step: Instant::now(),
+            owned_colliders: self.owned_colliders.clone(),
+            owned_rigid_bodies: self.owned_rigid_bodies.clone(),
         }
     }
 }
@@ -411,12 +419,19 @@ impl Space {
             event_handler,
             collision_recv,
             last_step,
+            owned_colliders: Vec::new(),
+            owned_rigid_bodies: Vec::new()
         }
     }
+
+
 
     
 
     pub fn step(&mut self, owned_rigid_bodies: &Vec<SyncRigidBodyHandle>, owned_colliders: &Vec<SyncColliderHandle>, dt: &Instant) {
+
+        self.owned_rigid_bodies = owned_rigid_bodies.clone();
+        self.owned_colliders = owned_colliders.clone();
 
         self.last_step = Instant::now();
 
@@ -459,20 +474,20 @@ impl Space {
         );
         //println!("time: {:?}", self.);
         
-        for (rigid_body_handle, rigid_body) in self.sync_rigid_body_set.rigid_body_set.iter_mut() {
+        // for (rigid_body_handle, rigid_body) in self.sync_rigid_body_set.rigid_body_set.iter_mut() {
 
-            let sync_rigid_body_handle = self.sync_rigid_body_set.reverse_sync_map.get(&rigid_body_handle).unwrap();
+        //     let sync_rigid_body_handle = self.sync_rigid_body_set.reverse_sync_map.get(&rigid_body_handle).unwrap();
 
-            if owned_rigid_bodies.contains(sync_rigid_body_handle) {
-                continue;
-            }
+        //     if owned_rigid_bodies.contains(sync_rigid_body_handle) {
+        //         continue;
+        //     }
 
-            let rigid_body_before = rigid_body_set_before.get(rigid_body_handle).expect("Unable to find old version of rigid body before it was updated");
+        //     let rigid_body_before = rigid_body_set_before.get(rigid_body_handle).expect("Unable to find old version of rigid body before it was updated");
 
-            // we should probably remove this instead of cloning?
-            *rigid_body = rigid_body_before.clone();
+        //     // we should probably remove this instead of cloning?
+        //     *rigid_body = rigid_body_before.clone();
          
-        }
+        // }
 
         // for (collider_handle, _collider) in self.sync_collider_set.collider_set.iter_mut() {
 
@@ -495,7 +510,6 @@ impl Space {
 
 #[derive(Serialize, Deserialize)]
 pub struct SpaceDiff {
-    // for some reason i cant use RigidBodySetDiff directly
     sync_rigid_body_set: SyncRigidBodySetDiff,
     sync_collider_set: SyncColliderSetDiff,
     gravity: Option<nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>>,
@@ -563,7 +577,12 @@ impl Diff for Space {
         // RIGID BODIES
         if other.sync_rigid_body_set.rigid_body_set != self.sync_rigid_body_set.rigid_body_set {
             for (sync_rigid_body_handle, local_rigid_body_handle) in &self.sync_rigid_body_set.sync_map {
-    
+                
+                // we dont want to create a diff for a rigid body we dont control
+                if other.owned_rigid_bodies.contains(sync_rigid_body_handle) == false {
+                    continue;
+                }
+
                 match other.sync_rigid_body_set.sync_map.get(&sync_rigid_body_handle) {
                     
                     // the rigid body in in both Spaces
@@ -643,6 +662,9 @@ impl Diff for Space {
             }
 
             for (other_sync_rigid_body_handle, other_local_rigid_body_handle) in &other.sync_rigid_body_set.sync_map {
+
+                // we dont need to check for body ownership when we are creating NEW bodies
+
                 match self.sync_rigid_body_set.sync_map.get(&other_sync_rigid_body_handle) {
                     // item is in both Spaces (already handled)
                     Some(_) => {},
@@ -684,6 +706,11 @@ impl Diff for Space {
         // COLLIDERS
         if other.sync_collider_set.collider_set != self.sync_collider_set.collider_set {
             for (sync_collider_handle, local_collider_handle) in &self.sync_collider_set.sync_map {
+
+                // dont update colliders we don't own
+                if self.owned_colliders.contains(sync_collider_handle) == false {
+                    continue;
+                }
     
                 match other.sync_collider_set.sync_map.get(&sync_collider_handle) {
                     
@@ -803,6 +830,9 @@ impl Diff for Space {
                     // rigid_body.lock_translations(true, true);
                     // rigid_body.lock_rotations(true, true);
 
+                    rigid_body.enable_ccd(true);
+                    rigid_body.set_soft_ccd_prediction(20.);
+
 
                     self.sync_rigid_body_set.insert_sync_known_handle(
                         rigid_body,
@@ -829,9 +859,7 @@ impl Diff for Space {
                 rigid_body.set_angvel(angular_velocity, true);
             }
 
-            if let Some(body_type) = rigid_body_diff.body_type {
-                rigid_body.set_body_type(body_type, true);
-            }
+            
 
             // we attach the collider in a later step
         }
