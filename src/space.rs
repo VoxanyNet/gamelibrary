@@ -2,7 +2,7 @@ use std::{collections::{HashMap, HashSet}, time::{Duration, Instant}};
 
 use diff::{Diff, VecDiff};
 use nalgebra::{vector, Isometry2, Vector2};
-use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, Collider, ColliderBuilder, CollisionEvent, RigidBody, RigidBodyBuilder, RigidBodyType, SharedShape}};
+use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, Collider, ColliderBuilder, CollisionEvent, GenericJoint, ImpulseJoint, ImpulseJointHandle, InteractionGroups, RigidBody, RigidBodyBuilder, RigidBodyType, SharedShape}};
 use serde::{Deserialize, Deserializer, Serialize};
 
 
@@ -256,6 +256,79 @@ impl SyncColliderSet {
 
 }
 
+#[derive(Serialize, Deserialize, Diff, Clone, PartialEq, Hash, Eq, Copy)]
+pub struct SyncImpulseJointHandle {
+    id: u64
+}
+
+impl SyncImpulseJointHandle {
+    pub fn new() -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().as_u64_pair().0
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SyncImpulseJointSet {
+    pub impulse_joint_set: ImpulseJointSet,
+    sync_map: HashMap<SyncImpulseJointHandle, ImpulseJointHandle>,
+    reverse_sync_map: HashMap<ImpulseJointHandle, SyncImpulseJointHandle>
+}
+
+impl SyncImpulseJointSet {
+
+    pub fn new() -> Self {
+        Self {
+            impulse_joint_set: ImpulseJointSet::new(),
+            sync_map: HashMap::new(),
+            reverse_sync_map: HashMap::new(),
+        }
+    }
+    pub fn insert_sync(
+        &mut self, 
+        body1: RigidBodyHandle, 
+        body2: RigidBodyHandle, 
+        data: impl Into<GenericJoint>,
+        wake_up: bool
+    ) -> SyncImpulseJointHandle {
+        let sync_handle = SyncImpulseJointHandle::new();
+
+        let local_handle = self.impulse_joint_set.insert(
+            body1, 
+            body2, 
+            data, 
+            wake_up
+        );
+
+        self.sync_map.insert(sync_handle, local_handle);
+
+        self.reverse_sync_map.insert(local_handle, sync_handle);
+
+        sync_handle
+    }
+
+    pub fn get_sync_mut(&mut self, sync_handle: SyncImpulseJointHandle) -> Option<&mut ImpulseJoint> {
+        match self.sync_map.get(&sync_handle) {
+            Some(local_handle) => {
+                self.impulse_joint_set.get_mut(*local_handle)
+            },
+            None => None,
+        }
+    }
+
+    pub fn get_sync(&self, sync_handle: SyncImpulseJointHandle) -> Option<&ImpulseJoint> {
+        match self.sync_map.get(&sync_handle) {
+            Some(local_handle) => {
+                self.impulse_joint_set.get(*local_handle)
+            },
+            None => None
+        }
+    }
+
+    
+}
+
 #[derive(Serialize)]
 pub struct Space {
     
@@ -270,7 +343,7 @@ pub struct Space {
     pub island_manager: IslandManager,
     pub broad_phase: DefaultBroadPhase,
     pub narrow_phase: NarrowPhase,
-    pub impulse_joint_set: ImpulseJointSet,
+    pub sync_impulse_joint_set: SyncImpulseJointSet,
     pub multibody_joint_set: MultibodyJointSet,
     pub ccd_solver: CCDSolver,
     pub query_pipeline: QueryPipeline,
@@ -299,7 +372,7 @@ impl<'de> Deserialize<'de> for Space {
             island_manager: IslandManager,
             broad_phase: DefaultBroadPhase,
             narrow_phase: NarrowPhase,
-            impulse_joint_set: ImpulseJointSet,
+            sync_impulse_joint_set: SyncImpulseJointSet,
             multibody_joint_set: MultibodyJointSet,
             ccd_solver: CCDSolver,
             query_pipeline: QueryPipeline
@@ -322,7 +395,7 @@ impl<'de> Deserialize<'de> for Space {
             island_manager: helper.island_manager,
             broad_phase: helper.broad_phase,
             narrow_phase: helper.narrow_phase,
-            impulse_joint_set: helper.impulse_joint_set,
+            sync_impulse_joint_set: helper.sync_impulse_joint_set,
             multibody_joint_set: helper.multibody_joint_set,
             ccd_solver: helper.ccd_solver,
             query_pipeline: helper.query_pipeline,
@@ -351,7 +424,7 @@ impl Clone for Space {
             island_manager: self.island_manager.clone(),
             broad_phase: self.broad_phase.clone(),
             narrow_phase: self.narrow_phase.clone(),
-            impulse_joint_set: self.impulse_joint_set.clone(),
+            sync_impulse_joint_set: self.sync_impulse_joint_set.clone(),
             multibody_joint_set: self.multibody_joint_set.clone(),
             ccd_solver: self.ccd_solver.clone(),
             query_pipeline: self.query_pipeline.clone(),
@@ -395,7 +468,7 @@ impl Space {
         let island_manager = IslandManager::new();
         let broad_phase = DefaultBroadPhase::new();
         let narrow_phase = NarrowPhase::new();
-        let impulse_joint_set = ImpulseJointSet::new();
+        let sync_impulse_joint_set = SyncImpulseJointSet::new();
         let multibody_joint_set = MultibodyJointSet::new();
         let ccd_solver = CCDSolver::new();
         let query_pipeline = QueryPipeline::new();
@@ -411,7 +484,7 @@ impl Space {
             island_manager, 
             broad_phase, 
             narrow_phase, 
-            impulse_joint_set, 
+            sync_impulse_joint_set, 
             multibody_joint_set, 
             ccd_solver, 
             query_pipeline, 
@@ -465,7 +538,7 @@ impl Space {
             &mut self.narrow_phase,
             &mut self.sync_rigid_body_set.rigid_body_set,
             &mut self.sync_collider_set.collider_set,
-            &mut self.impulse_joint_set,
+            &mut self.sync_impulse_joint_set.impulse_joint_set,
             &mut self.multibody_joint_set,
             &mut self.ccd_solver,
             Some(&mut self.query_pipeline),
@@ -532,7 +605,8 @@ pub struct RigidBodyDiff {
 pub struct ColliderDiff {
     pub shape: Option<SharedShape>,
     pub parent: Option<SyncRigidBodyHandle>, // need to add position relative to parent
-    pub position: Option<Isometry2<f32>>
+    pub position: Option<Isometry2<f32>>,
+    pub collision_groups: Option<InteractionGroups>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -725,7 +799,12 @@ impl Diff for Space {
                                 shape: None,
                                 parent: None,
                                 position: None,
+                                collision_groups: None
                             };
+
+                            if other_collider.collision_groups() != collider.collision_groups() {
+                                collider_diff.collision_groups = Some(other_collider.collision_groups())
+                            }
 
                             if other_collider.shared_shape() != collider.shared_shape() {
                                 collider_diff.shape = Some(other_collider.shared_shape().clone());
@@ -777,12 +856,16 @@ impl Diff for Space {
                             shape: Some(other_collider.shared_shape().clone()),
                             parent: parent,
                             position: Some(*other_collider.position()),
+                            collision_groups: Some(other_collider.collision_groups())
                         };
 
                         diff.sync_collider_set.altered.insert(*other_sync_collider_handle, collider_diff);
                     },
                 }
             }
+
+            // IMPULSE JOINT SET
+            
         }
 
         if other.gravity != self.gravity {
@@ -800,7 +883,7 @@ impl Diff for Space {
                 *deleted_sync_rigid_body_handle,
                 &mut self.island_manager,
                 &mut self.sync_collider_set.collider_set,
-                &mut self.impulse_joint_set,
+                &mut self.sync_impulse_joint_set.impulse_joint_set,
                 &mut self.multibody_joint_set,
                 false
             );

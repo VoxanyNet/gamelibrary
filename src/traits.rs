@@ -86,7 +86,7 @@ pub trait HasPhysics {
 
     fn remove_body_and_collider(&mut self, space: &mut Space) {
 
-        space.sync_rigid_body_set.remove_sync(*self.rigid_body_handle(), &mut space.island_manager, &mut space.sync_collider_set.collider_set, &mut space.impulse_joint_set, &mut space.multibody_joint_set, true);
+        space.sync_rigid_body_set.remove_sync(*self.rigid_body_handle(), &mut space.island_manager, &mut space.sync_collider_set.collider_set, &mut space.sync_impulse_joint_set.impulse_joint_set, &mut space.multibody_joint_set, true);
     }
 
     fn contains_point(&mut self, space: &mut Space, point: Vec2) -> bool {
