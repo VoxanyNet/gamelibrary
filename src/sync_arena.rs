@@ -69,6 +69,8 @@ where
 
                     // item has been deleted
                     None => {
+
+                        println!("sync diff arena removing: {:?}", sync_id);
                         diff.removed.insert(*sync_id);
                     },
                 }
@@ -135,6 +137,7 @@ where
         // THIS IS WHERE THE SYNC IDs REALLY MATTER
 
         diff.removed.iter().for_each(|deleted_sync_index| {
+            println!("sync apply arena removing: {:?}", deleted_sync_index);
             let (client_index, client_generation) = self.sync_index_map.get(deleted_sync_index).unwrap(); // we might actually want to check this if its already been deleted
             self.remove(Index::from_raw_parts(*client_index, *client_generation, *deleted_sync_index));
         });

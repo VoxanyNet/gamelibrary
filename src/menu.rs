@@ -55,7 +55,8 @@ impl Menu {
                 text: text, 
                 hovered: false, 
                 clicked: false, 
-                color: self.color
+                color: self.color,
+                font_size: 20
             }
         )
     }
@@ -80,18 +81,20 @@ pub struct Button {
     pub text: String,
     pub hovered: bool,
     pub clicked: bool,
-    pub color: Color
+    pub color: Color,
+    pub font_size: u16
 }
 
 impl Button {
 
-    pub fn new(text: String, rect: Rect, color: macroquad::color::Color) -> Self {
+    pub fn new(text: String, rect: Rect, color: macroquad::color::Color, font_size: u16) -> Self {
         Self {
             rect,
             text,
             hovered: false,
             clicked: false,
             color,
+            font_size
         }
     }
     pub async fn draw(&self) {
@@ -104,7 +107,7 @@ impl Button {
         
         macroquad::shapes::draw_rectangle(self.rect.x, self.rect.y, self.rect.w, self.rect.h, rect_color);
         macroquad::shapes::draw_rectangle_lines(self.rect.x, self.rect.y, self.rect.w, self.rect.h, 3., BLACK);
-        macroquad::text::draw_text(&self.text, self.rect.x + 3., self.rect.y + self.rect.h / 2., 20., font_color);
+        macroquad::text::draw_text(&self.text, self.rect.x + 3., self.rect.y + self.rect.h / 2., self.font_size as f32, font_color);
     }
 
     pub fn update(&mut self, _camera_rect: Option<&Rect>) {

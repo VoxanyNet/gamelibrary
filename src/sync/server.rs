@@ -58,7 +58,11 @@ where
                                 println!("client {} disconnected", client_index);
                                 continue 'client_loop;
                             },
-                            _ => todo!("client tried to send non binary message")
+                            _ => {
+                                println!("client tried to send non binary message. disconnecting them!");
+
+                                continue 'client_loop;
+                            }
                         }
                     },
                     Err(error) => {
