@@ -1,8 +1,8 @@
 use std::{collections::{HashMap, HashSet}, hash::Hash, time::{Duration, Instant}};
 
 use diff::{Diff, VecDiff};
-use nalgebra::{vector, Isometry2, Vector2};
-use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, Collider, ColliderBuilder, CollisionEvent, GenericJoint, ImpulseJoint, ImpulseJointHandle, InteractionGroups, RigidBody, RigidBodyBuilder, RigidBodyType, SharedShape}};
+use nalgebra::{vector, Isometry2, Point2, Vector2};
+use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, Collider, ColliderBuilder, CollisionEvent, GenericJoint, GenericJointBuilder, ImpulseJoint, ImpulseJointHandle, InteractionGroups, RigidBody, RigidBodyBuilder, RigidBodyType, SharedShape}};
 use serde::{Deserialize, Deserializer, Serialize};
 
 
@@ -610,17 +610,9 @@ impl Space {
         self.last_step = Instant::now();
 
         self.integration_parameters.dt = dt.elapsed().as_secs_f32();
-
-        //self.last_step = web_time::Instant::now();
-        // any colliders/bodies we do not own we will return to their original state here
-        let rigid_body_set_before = self.sync_rigid_body_set.rigid_body_set.clone();
-        let collider_set_before = self.sync_collider_set.collider_set.clone();
         
 
         for (rigid_body_handle, rigid_body) in self.sync_rigid_body_set.rigid_body_set.iter_mut() {
-
-            // this is a temporary workaround but i think we are failing to sync sleep states
-            rigid_body.wake_up(true);   
 
             let sync_rigid_body_handle = self.sync_rigid_body_set.reverse_sync_map.get(&rigid_body_handle).unwrap();
 
@@ -715,16 +707,21 @@ pub struct ColliderDiff {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ImpulseJointDiff {
-    pub body1: Option<SyncRigidBodyHandle>,
-    pub body2: Option<SyncRigidBodyHandle>,
-    pub data: Option<GenericJoint>,
-    // might need to add more
+    pub local_anchor_1: Option<Point2<f32>>,
+    pub local_anchor_2: Option<Point2<f32>>,
+}
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NewSyncImpulseJoint {
+    joint_data: GenericJoint,
+    body_handle_1: SyncRigidBodyHandle,
+    body_handle_2: SyncRigidBodyHandle
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct SyncImpulseJointSetDiff {
     altered: HashMap<SyncImpulseJointHandle, ImpulseJointDiff>,
+    new: HashMap<SyncImpulseJointHandle, NewSyncImpulseJoint>,
     removed: HashSet<SyncImpulseJointHandle>
 }
 
@@ -733,6 +730,7 @@ impl SyncImpulseJointSetDiff {
         Self {
             altered: HashMap::new(),
             removed: HashSet::new(),
+            new: HashMap::new()
         }
     }
 }
@@ -1014,85 +1012,75 @@ impl Diff for Space {
 
 
         // // IMPULSE JOINT SET
-        // for (sync_joint_handle, local_joint_handle) in &self.sync_impulse_joint_set.sync_map {
+        for (sync_joint_handle, local_joint_handle) in &self.sync_impulse_joint_set.sync_map {
 
-        //     // check for ownership here
+            // if self.owned_joints.contains(sync_joint_handle) == false {
+            //     continue;
+            // }
 
-        //     if self.owned_joints.contains(sync_joint_handle) == false {
-        //         continue;
-        //     }
-
-        //     match other.sync_impulse_joint_set.sync_map.get(&sync_joint_handle) {
+            match other.sync_impulse_joint_set.sync_map.get(&sync_joint_handle) {
                 
-        //         // the joint is in both Spaces
-        //         Some(other_local_joint_handle) => {
-        //             let joint = self.sync_impulse_joint_set.impulse_joint_set.get(*local_joint_handle).unwrap();
+                // the joint is in both Spaces (we just need to update it)
+                Some(other_local_joint_handle) => {
+                    let joint = self.sync_impulse_joint_set.impulse_joint_set.get(*local_joint_handle).unwrap();
 
-        //             let other_joint = other.sync_impulse_joint_set.impulse_joint_set.get(*other_local_joint_handle).unwrap();
-                
-        //             if other_joint != joint {
-
-
-        //                 let mut impulse_joint_diff = ImpulseJointDiff {
-        //                     body1: None,
-        //                     body2: None,
-        //                     data: None,
-        //                 };
-
-        //                 if other_joint.body1 != joint.body1 {
-
-        //                     let sync_rigid_body_handle = other.sync_rigid_body_set.get_sync_handle(other_joint.body1);
-                            
-        //                     impulse_joint_diff.body1 = Some(sync_rigid_body_handle);
-        //                 }
-
-        //                 if other_joint.body2 != joint.body2 {
-
-        //                     let sync_rigid_body_handle = other.sync_rigid_body_set.get_sync_handle(other_joint.body2);
-
-        //                     impulse_joint_diff.body2 = Some(sync_rigid_body_handle);
-        //                 }
-
-        //                 if other_joint.data != joint.data {
-
-                        
-
-        //                     impulse_joint_diff.data = Some(other_joint.data);
-        //                 }
-
-        //                 diff.sync_impulse_joint_set.altered.insert(*sync_joint_handle, impulse_joint_diff);
-        //             }
-        //         },
-        //         None => {
-        //             diff.sync_impulse_joint_set.removed.insert(*sync_joint_handle);
-        //         },
-        //     }
-        // }
-
-        // for (other_sync_joint_handle, other_local_joint_handle) in &other.sync_impulse_joint_set.sync_map {
-        //     match self.sync_impulse_joint_set.sync_map.get(&other_sync_joint_handle) {
-        //         Some(_) => {},
-
-        //         // new joint
-        //         None => {
-
-        //             println!("NEW JOINT!");
-
-        //             let other_joint = other.sync_impulse_joint_set.impulse_joint_set.get(*other_local_joint_handle).unwrap();
-
-        //             let body_1_sync_handle = other.sync_rigid_body_set.get_sync_handle(other_joint.body1);
-        //             let body_2_sync_handle = other.sync_rigid_body_set.get_sync_handle(other_joint.body2);
+                    let other_joint = other.sync_impulse_joint_set.impulse_joint_set.get(*other_local_joint_handle).unwrap();
                     
-        //             let joint_diff = ImpulseJointDiff {
-        //                 body1: Some(body_1_sync_handle),
-        //                 body2: Some(body_2_sync_handle),
-        //                 data: Some(other_joint.data),
-        //             };
+                    // we can remove this and just check the attributes individually
+                    if other_joint != joint {
 
-        //             diff.sync_impulse_joint_set.altered.insert(*other_sync_joint_handle, joint_diff); 
-        //         },
-        //     }
-        // }
+
+                        let mut impulse_joint_diff = ImpulseJointDiff {
+                            local_anchor_1: None,
+                            local_anchor_2: None,
+                        };
+
+                        if other_joint.data.local_anchor1() != joint.data.local_anchor1() {
+
+                            println!("updating local anchor 1");
+
+                            impulse_joint_diff.local_anchor_1 = Some(other_joint.data.local_anchor1());
+                        }
+
+                        if other_joint.data.local_anchor2() != joint.data.local_anchor2() {
+                            impulse_joint_diff.local_anchor_2 = Some(other_joint.data.local_anchor2());
+
+                            println!("updating local anchor 2");
+                        }
+
+                        diff.sync_impulse_joint_set.altered.insert(*sync_joint_handle, impulse_joint_diff);
+                    }
+                },
+                None => {
+                    diff.sync_impulse_joint_set.removed.insert(*sync_joint_handle);
+                },
+            }
+        }
+
+        for (other_sync_joint_handle, other_local_joint_handle) in &other.sync_impulse_joint_set.sync_map {
+            match self.sync_impulse_joint_set.sync_map.get(&other_sync_joint_handle) {
+                Some(_) => {},
+
+                // new joint
+                None => {
+
+                    println!("NEW JOINT!");
+
+                    let new_joint = other.sync_impulse_joint_set.impulse_joint_set.get(*other_local_joint_handle).unwrap();
+
+                    let body_1_sync_handle = other.sync_rigid_body_set.get_sync_handle(new_joint.body1);
+                    let body_2_sync_handle = other.sync_rigid_body_set.get_sync_handle(new_joint.body2);
+        
+                    let new_sync_impulse_joint = NewSyncImpulseJoint {
+                        joint_data: new_joint.data.clone(),
+                        body_handle_1: body_1_sync_handle,
+                        body_handle_2: body_2_sync_handle,
+                    };
+                    
+                    diff.sync_impulse_joint_set.new.insert(*other_sync_joint_handle, new_sync_impulse_joint); 
+                },
+            }
+        }
 
         if other.gravity != self.gravity {
             diff.gravity = Some(other.gravity)
@@ -1180,22 +1168,16 @@ impl Diff for Space {
                 rigid_body.set_angvel(angular_velocity, true);
             }
 
-            
-
-            // we attach the collider in a later step
         }
 
 
-        let colliders_sync_map = self.sync_collider_set.sync_map.clone();
-
+        // COLLIDER SET
         for (sync_collider_handle, collider_diff) in &diff.sync_collider_set.altered {
             
             
             let collider = match self.sync_collider_set.get_sync_mut(*sync_collider_handle) {
                 Some(existing_collider) => {existing_collider},
                 None => {
-
-                    println!("got a new collider???? {:?}", sync_collider_handle);
 
                     // if the collider isnt already in the collider set we create it and attach it to its rigid body
                     let mut collider = ColliderBuilder::cuboid(1., 1.).build();
@@ -1241,50 +1223,46 @@ impl Diff for Space {
         }
 
         // IMPULSE JOINTS
-        // for (sync_joint_handle, sync_joint_diff) in &diff.sync_impulse_joint_set.altered {
-        //     let joint = match self.sync_impulse_joint_set.get_sync_mut(*sync_joint_handle) {
-        //         // the joint already exists
-        //         Some(existing_joint) => existing_joint,
+        for (sync_joint_handle, new_sync_joint) in &diff.sync_impulse_joint_set.new {
+
+            let body1_local_handle = self.sync_rigid_body_set.get_local_handle(new_sync_joint.body_handle_1);
+            let body2_local_handle = self.sync_rigid_body_set.get_local_handle(new_sync_joint.body_handle_2);
+
+            
+            self.sync_impulse_joint_set.insert_sync_known_handle(
+                body1_local_handle, 
+                body2_local_handle, 
+                new_sync_joint.joint_data, 
+                true, 
+                *sync_joint_handle
+            );
+
+            println!("contacts enabled: {:?}", new_sync_joint.joint_data.contacts_enabled());
+
+        }
+
+        
+        for (sync_joint_handle, sync_joint_diff) in &diff.sync_impulse_joint_set.altered {
+            let joint = match self.sync_impulse_joint_set.get_sync_mut(*sync_joint_handle) {
+                // the joint already exists
+                Some(existing_joint) => existing_joint,
                 
-        //         // need to add new joint
-        //         None => {   
+                // need to add new joint
+                None => {   
 
-        //             // println!("{:?}", sync_joint_diff);
-
-        //             let body1_local_handle = self.sync_rigid_body_set.get_local_handle(sync_joint_diff.body1.unwrap());
-        //             let body2_local_handle = self.sync_rigid_body_set.get_local_handle(sync_joint_diff.body2.unwrap());
+                    unreachable!()
                     
-        //             self.sync_impulse_joint_set.insert_sync_known_handle(
-        //                 body1_local_handle, 
-        //                 body2_local_handle, 
-        //                 sync_joint_diff.data.unwrap(), 
-        //                 true, 
-        //                 *sync_joint_handle
-        //             );
+                },
+            };
 
-        //             continue;
+            if let Some(local_anchor_1) = sync_joint_diff.local_anchor_1 {
+                joint.data.set_local_anchor1(local_anchor_1);
+            }
 
-                    
-        //         },
-        //     };
-
-        //     if let Some(sync_body_1_handle) = sync_joint_diff.body1 {
-        //         let body1_local_handle = self.sync_rigid_body_set.get_local_handle(sync_body_1_handle);
-
-        //         joint.body1 = body1_local_handle;
-                
-        //     }
-
-        //     if let Some(sync_body_2_handle) = sync_joint_diff.body2 {
-        //         let body2_local_handle = self.sync_rigid_body_set.get_local_handle(sync_body_2_handle);
-
-        //         joint.body2 = body2_local_handle;
-        //     }
-
-        //     if let Some(data) = sync_joint_diff.data {
-        //         joint.data = data;
-        //     }
-        // }
+            if let Some(local_anchor_2) = sync_joint_diff.local_anchor_2 {
+                joint.data.set_local_anchor2(local_anchor_2);
+            }
+        }
         
 
         if let Some(gravity) = &diff.gravity {
