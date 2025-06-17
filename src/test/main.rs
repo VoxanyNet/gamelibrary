@@ -8,7 +8,7 @@ use macroquad::prelude::*;
 #[macroquad::main("Animation Test")]
 async fn main() {
 
-    let mut menu = Menu::new(Vec2::new(0., 20.), GRAY);
+    let mut menu = Menu::new(Vec2::new(0., 20.), GRAY, "assets/fonts/CutePixel.ttf".to_string(), None, None);
 
     menu.add_button("Stop".to_string());
     menu.add_button("Play".to_string());

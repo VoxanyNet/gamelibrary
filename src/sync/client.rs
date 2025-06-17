@@ -2,7 +2,7 @@
 use std::{fs, time::Instant};
 
 use diff::Diff;
-use ewebsock::{WsReceiver, WsSender};
+use ewebsock::{WsMessage, WsReceiver, WsSender};
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use macroquad::input::{is_key_down, KeyCode};
 use serde::{de::DeserializeOwned, Serialize};
@@ -114,6 +114,10 @@ where
        
 
         self.previous_state = state.clone();
+    }
+
+    pub fn disconnect(&mut self) {
+        self.server_send.close();
     }
     
     fn send_update(&mut self, state: &T) {

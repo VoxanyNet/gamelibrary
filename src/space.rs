@@ -700,7 +700,8 @@ pub struct RigidBodyDiff {
     pub angular_velocity: Option<f32>,
     // consider adding RigidBodyForces here! and other stuff
     pub colliders: Option<VecDiff<SyncColliderHandle>>,
-    pub body_type: Option<RigidBodyType>
+    pub body_type: Option<RigidBodyType>,
+    pub mass: Option<f32>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -708,7 +709,8 @@ pub struct ColliderDiff {
     pub shape: Option<SharedShape>,
     pub parent: Option<SyncRigidBodyHandle>, // need to add position relative to parent
     pub position: Option<Isometry2<f32>>,
-    pub collision_groups: Option<InteractionGroups>
+    pub collision_groups: Option<InteractionGroups>,
+    pub mass: Option<f32>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -803,7 +805,8 @@ impl Diff for Space {
                                 velocity: None,
                                 angular_velocity: None,
                                 colliders: None,
-                                body_type: None
+                                body_type: None,
+                                mass: None
                             };
 
                             
@@ -815,6 +818,10 @@ impl Diff for Space {
 
                             if other_rigid_body.linvel() != rigid_body.linvel() {
                                 rigid_body_diff.velocity = Some(*other_rigid_body.linvel());
+                            }
+
+                            if other_rigid_body.mass() != rigid_body.mass() {
+                                rigid_body_diff.mass = Some(other_rigid_body.mass());
                             }
 
                             if other_rigid_body.angvel() != rigid_body.angvel() {
@@ -887,12 +894,14 @@ impl Diff for Space {
                             other_sync_collider_handles.push(*other_sync_collider_handle);
                         }
 
+                    
                         let rigid_body_diff = RigidBodyDiff {
                             position:  Some(*other_rigid_body.position()),
                             velocity: Some(*other_rigid_body.linvel()),
                             angular_velocity: Some(other_rigid_body.angvel()),
                             colliders: Some(sync_collider_handles.diff(&other_sync_collider_handles)),
-                            body_type: Some(other_rigid_body.body_type())
+                            body_type: Some(other_rigid_body.body_type()),
+                            mass: Some(other_rigid_body.mass())
                         };
 
                         diff.sync_rigid_body_set.altered.insert(
@@ -926,11 +935,16 @@ impl Diff for Space {
                                 shape: None,
                                 parent: None,
                                 position: None,
-                                collision_groups: None
+                                collision_groups: None,
+                                mass: None
                             };
 
                             if other_collider.collision_groups() != collider.collision_groups() {
                                 collider_diff.collision_groups = Some(other_collider.collision_groups())
+                            }
+
+                            if other_collider.mass() != collider.mass() {
+                                collider_diff.mass = Some(other_collider.mass());
                             }
 
                             if other_collider.shared_shape() != collider.shared_shape() {
@@ -986,7 +1000,8 @@ impl Diff for Space {
                             shape: Some(other_collider.shared_shape().clone()),
                             parent: parent,
                             position: Some(*other_collider.position()),
-                            collision_groups: Some(other_collider.collision_groups())
+                            collision_groups: Some(other_collider.collision_groups()),
+                            mass: Some(other_collider.mass())
                         };
 
                         diff.sync_collider_set.altered.insert(*other_sync_collider_handle, collider_diff);
@@ -1153,6 +1168,10 @@ impl Diff for Space {
 
             }
 
+            if let Some(mas) = rigid_body_diff.mass {
+                rigid_body.set_additional_mass(mas, true);
+            }
+
             if let Some(velocity) = rigid_body_diff.velocity {
                 rigid_body.set_linvel(velocity, true);
             }
@@ -1184,6 +1203,8 @@ impl Diff for Space {
                     collider.set_position(collider_diff.position.unwrap());
 
                     collider.set_shape(collider_diff.shape.clone().unwrap());
+
+                    collider.set_mass(collider_diff.mass.unwrap());
                 
                     self.sync_collider_set.insert_sync_known_handle(collider, *sync_collider_handle);
 
@@ -1207,6 +1228,10 @@ impl Diff for Space {
             if let Some(shape) = &collider_diff.shape {
                 collider.set_shape(shape.clone());
             };
+
+            if let Some(mass) = collider_diff.mass {
+                collider.set_mass(mass);
+            }
 
             if let Some(position) = &collider_diff.position {
                 collider.set_position(*position);
