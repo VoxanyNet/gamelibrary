@@ -86,7 +86,9 @@ where
         
         let state_bytes = decompress_size_prepended(&compressed_state_bytes).expect("Failed to decompress initial state");
 
-        let state: T = match bitcode::deserialize(&state_bytes) {
+        let state_string = String::from_utf8(state_bytes).unwrap();
+
+        let state: T = match serde_yaml::from_str(&state_string) {
             Ok(state) => state,
             Err(error) => {
                 panic!("failed to deserialize initial state: {}", error);

@@ -1,5 +1,6 @@
 use std::net::{SocketAddr, TcpListener, TcpStream};
 
+use bincode::config::Config;
 use diff::Diff;
 use lz4_flex::{compress_prepend_size, decompress_size_prepended};
 use serde::{de::DeserializeOwned, Serialize};
@@ -181,9 +182,9 @@ where
                 
 
                 // send client current state
-                let state_bytes = bitcode::serialize(&self.state).expect("Failed to serialize current game state");
+                let state_bytes = serde_yaml::to_string(&self.state).expect("Failed to serialize current game state");
 
-                let compressed_state_bytes = compress_prepend_size(&state_bytes);
+                let compressed_state_bytes = compress_prepend_size(&state_bytes.as_bytes());
 
                 // keep attempting to send initial state to client
                 loop {

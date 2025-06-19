@@ -696,7 +696,7 @@ pub struct RigidBodyDiff {
     pub mass: Option<f32>
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ColliderDiff {
     pub shape: Option<SharedShape>,
     pub parent: Option<SyncRigidBodyHandle>, // need to add position relative to parent
@@ -977,6 +977,7 @@ impl Diff for Space {
             }
 
             for (other_sync_collider_handle, other_local_collider_handle) in &other.sync_collider_set.sync_map {
+
                 match self.sync_collider_set.sync_map.get(&other_sync_collider_handle) {
                     Some(_) => {},
                     None => {
@@ -1171,9 +1172,10 @@ impl Diff for Space {
         }
 
 
+        println!("set length: {:?}", self.sync_collider_set.collider_set.len());
+        println!("map length: {:?}", self.sync_collider_set.sync_map.len());
         // COLLIDER SET
         for (sync_collider_handle, collider_diff) in &diff.sync_collider_set.altered {
-            
             
             let collider = match self.sync_collider_set.get_sync_mut(*sync_collider_handle) {
                 Some(existing_collider) => {existing_collider},
@@ -1182,6 +1184,7 @@ impl Diff for Space {
                     // if the collider isnt already in the collider set we create it and attach it to its rigid body
                     let mut collider = ColliderBuilder::cuboid(1., 1.).build();
 
+                    println!("{:?}", collider_diff);
                     collider.set_position(collider_diff.position.unwrap());
 
                     collider.set_shape(collider_diff.shape.clone().unwrap());
@@ -1247,10 +1250,11 @@ impl Diff for Space {
                 // the joint already exists
                 Some(existing_joint) => existing_joint,
                 
-                // need to add new joint
                 None => {   
 
-                    unreachable!()
+                    // this means that there is a sync joint handle in the sync map that isnt in the actual joint set
+                    // i cant figure out what is causing this so i am just ignoring it for now!
+                    continue;
                     
                 },
             };

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bitcode = { version = "0.6.3", features = ["serde"] }
+bitcode = { version = "0.6.6", features = ["serde"] }
 chrono = "0.4.38"
 diff-struct = "0.5.3"
 ewebsock = "0.7.0"
@@ -25,6 +25,7 @@ web-sys = { version = "0.3.72", features = ["WebSocket", "console"] }
 wasm-bindgen-futures = "0.4.45"
 ears = {version = "0.8.0", optional = true}
 futures = "0.3.31"
+bincode = { version = "2.0.1", features = ["serde"] }
 
 [features]
 3d-audio = ["ears"]
