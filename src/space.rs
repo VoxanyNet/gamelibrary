@@ -136,8 +136,6 @@ impl SyncRigidBodySet {
 
                 for handle in joint_handles {
 
-                    println!("removing handle: {:?}", handle);
-
                     let sync_handle = impulse_joints.reverse_sync_map.remove(&handle).unwrap();
 
                     impulse_joints.sync_map.remove(&sync_handle);
@@ -778,16 +776,16 @@ impl Diff for Space {
         // RIGID BODIES
         if other.sync_rigid_body_set.rigid_body_set != self.sync_rigid_body_set.rigid_body_set {
             for (sync_rigid_body_handle, local_rigid_body_handle) in &self.sync_rigid_body_set.sync_map {
-                
-                // we dont want to create a diff for a rigid body we dont control
-                if other.owned_rigid_bodies.contains(sync_rigid_body_handle) == false {
-                    continue;
-                }
 
                 match other.sync_rigid_body_set.sync_map.get(&sync_rigid_body_handle) {
                     
                     // the rigid body in in both Spaces
                     Some(other_local_rigid_body_handle) => {
+
+                        // we dont want to create a diff for a rigid body we dont control
+                        if other.owned_rigid_bodies.contains(sync_rigid_body_handle) == false {
+                            continue;
+                        }
                         
                         // we can just fetch the rigid body using the local handle i think it is faster this way
                         let rigid_body = self.sync_rigid_body_set.rigid_body_set.get(*local_rigid_body_handle).unwrap();
@@ -860,8 +858,6 @@ impl Diff for Space {
                     // rigid body has been removed
                     None => {
 
-                        println!("{:?} has been removed", sync_rigid_body_handle);
-
                         diff.sync_rigid_body_set.removed.insert(*sync_rigid_body_handle);
                     },
                 }
@@ -914,16 +910,17 @@ impl Diff for Space {
         // COLLIDERS
         if other.sync_collider_set.collider_set != self.sync_collider_set.collider_set {
             for (sync_collider_handle, local_collider_handle) in &self.sync_collider_set.sync_map {
-
-                // dont update colliders we don't own
-                if self.owned_colliders.contains(sync_collider_handle) == false {
-                    continue;
-                }
     
                 match other.sync_collider_set.sync_map.get(&sync_collider_handle) {
                     
                     // the collider is in both Spaces
                     Some(other_collider_handle) => {
+
+                        // dont update colliders we don't own
+                        if self.owned_colliders.contains(sync_collider_handle) == false {
+                            continue;
+                        }
+
                         let collider = self.sync_collider_set.collider_set.get(*local_collider_handle).unwrap();
 
                         let other_collider = other.sync_collider_set.collider_set.get(*other_collider_handle).unwrap();
@@ -982,8 +979,6 @@ impl Diff for Space {
                     Some(_) => {},
                     None => {
 
-                        println!("new collider!!!");
-                        
                         let other_collider = other.sync_collider_set.collider_set.get(*other_local_collider_handle).unwrap();
 
                         let parent: Option<SyncRigidBodyHandle> = match other_collider.parent() {
@@ -1038,7 +1033,7 @@ impl Diff for Space {
 
                         if other_joint.data.local_anchor1() != joint.data.local_anchor1() {
 
-                            println!("updating local anchor 1");
+                            
 
                             impulse_joint_diff.local_anchor_1 = Some(other_joint.data.local_anchor1());
                         }
@@ -1046,7 +1041,7 @@ impl Diff for Space {
                         if other_joint.data.local_anchor2() != joint.data.local_anchor2() {
                             impulse_joint_diff.local_anchor_2 = Some(other_joint.data.local_anchor2());
 
-                            println!("updating local anchor 2");
+                           
                         }
 
                         diff.sync_impulse_joint_set.altered.insert(*sync_joint_handle, impulse_joint_diff);
@@ -1065,7 +1060,7 @@ impl Diff for Space {
                 // new joint
                 None => {
 
-                    println!("NEW JOINT!");
+                    
 
                     let new_joint = other.sync_impulse_joint_set.impulse_joint_set.get(*other_local_joint_handle).unwrap();
 
@@ -1108,8 +1103,6 @@ impl Diff for Space {
 
         diff.sync_collider_set.removed.iter().for_each(|deleted_sync_collider_handle| {
 
-            println!("removing collider: {:?}", deleted_sync_collider_handle);
-
             self.sync_collider_set.remove_sync(
                 *deleted_sync_collider_handle, 
                 &mut self.island_manager, 
@@ -1130,11 +1123,13 @@ impl Diff for Space {
                 Some(existing_rigid_body) => existing_rigid_body,
                 None => {
                     // need to add new rigid body if it doesnt already exist
+
+                    // temporary fix to avoid updates for rigid bodies that have been removed
+                    if rigid_body_diff.angular_velocity.is_none() || rigid_body_diff.body_type.is_none() || rigid_body_diff.mass.is_none() || rigid_body_diff.position.is_none() {
+                        continue;
+                    }
                     
                     let mut rigid_body = RigidBodyBuilder::dynamic().build();
-
-                    // rigid_body.lock_translations(true, true);
-                    // rigid_body.lock_rotations(true, true);
 
                     rigid_body.enable_ccd(true);
                     rigid_body.set_soft_ccd_prediction(20.);
@@ -1172,19 +1167,23 @@ impl Diff for Space {
         }
 
 
-        println!("set length: {:?}", self.sync_collider_set.collider_set.len());
-        println!("map length: {:?}", self.sync_collider_set.sync_map.len());
+        // println!("set length: {:?}", self.sync_collider_set.collider_set.len());
+        // println!("map length: {:?}", self.sync_collider_set.sync_map.len());
         // COLLIDER SET
         for (sync_collider_handle, collider_diff) in &diff.sync_collider_set.altered {
             
             let collider = match self.sync_collider_set.get_sync_mut(*sync_collider_handle) {
                 Some(existing_collider) => {existing_collider},
                 None => {
-
+                    
+                    // this is a temporary workaround to check for updates to colliders that have been removed
+                    if collider_diff.shape.is_none() || collider_diff.collision_groups.is_none() || collider_diff.mass.is_none() || collider_diff.position.is_none() {
+                        continue;
+                    }
                     // if the collider isnt already in the collider set we create it and attach it to its rigid body
                     let mut collider = ColliderBuilder::cuboid(1., 1.).build();
 
-                    println!("{:?}", collider_diff);
+                    
                     collider.set_position(collider_diff.position.unwrap());
 
                     collider.set_shape(collider_diff.shape.clone().unwrap());
@@ -1240,7 +1239,7 @@ impl Diff for Space {
                 *sync_joint_handle
             );
 
-            println!("contacts enabled: {:?}", new_sync_joint.joint_data.contacts_enabled());
+          
 
         }
 
