@@ -20,6 +20,7 @@ pub mod swapiter;
 pub mod arenaiter;
 pub mod sound;
 pub mod sync_arena;
+pub mod font_loader;
 
 pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
 
