@@ -599,7 +599,7 @@ impl Space {
 
     
 
-    pub fn step(&mut self, owned_rigid_bodies: &Vec<SyncRigidBodyHandle>, owned_colliders: &Vec<SyncColliderHandle>, owned_joints: &Vec<SyncImpulseJointHandle>, dt: &Instant) {
+    pub fn step(&mut self, owned_rigid_bodies: &Vec<SyncRigidBodyHandle>, owned_colliders: &Vec<SyncColliderHandle>, owned_joints: &Vec<SyncImpulseJointHandle>, dt: Duration) {
 
         self.owned_rigid_bodies = owned_rigid_bodies.clone();
         self.owned_colliders = owned_colliders.clone();
@@ -607,7 +607,7 @@ impl Space {
 
         self.last_step = Instant::now();
 
-        self.integration_parameters.dt = dt.elapsed().as_secs_f32();
+        self.integration_parameters.dt = dt.as_secs_f32();
         
 
         for (rigid_body_handle, rigid_body) in self.sync_rigid_body_set.rigid_body_set.iter_mut() {
