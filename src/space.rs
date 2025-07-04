@@ -808,12 +808,36 @@ impl Diff for Space {
                             
                             if other_rigid_body.position() != rigid_body.position() {
 
-                                //println!("{:?} changed its position to: x: {:?}, y: {:?}", sync_rigid_body_handle, other_rigid_body.position().translation.x, other_rigid_body.position().translation.y);
+                
+
+                                // if ((other_rigid_body.translation().x - rigid_body.translation().x).abs() > 1.) || ((other_rigid_body.translation().y - rigid_body.translation().y).abs() > 1.) {
+                                //     // do something clever with the velocity to determine if we should send the update
+                                //     // because we WANT to have very granular velocity updates when the velocity is high.
+                                //     // the current implementation prevents uneeded updates when stationary but reduces the smoothness of the updates
+
+                                    
+                                    
+                                // }
+
                                 rigid_body_diff.position = Some(*other_rigid_body.position());
+
+
+                                
+                                
+                                
                             }
 
                             if other_rigid_body.linvel() != rigid_body.linvel() {
+
+                                // if ((other_rigid_body.linvel().x - rigid_body.linvel().x).abs() > 1.) 
+                                // || ((other_rigid_body.linvel().y - rigid_body.linvel().y).abs() > 1.) {
+                                    
+                                // }
+
                                 rigid_body_diff.velocity = Some(*other_rigid_body.linvel());
+
+                                
+                                
                             }
 
                             if other_rigid_body.mass() != rigid_body.mass() {
@@ -1146,10 +1170,24 @@ impl Diff for Space {
             };
 
             if let Some(position) = rigid_body_diff.position {
-                rigid_body.set_position(position, true);
+                
+                if (rigid_body.translation().x - position.translation.x).abs() > 2. {
+                    rigid_body.set_position(position, true);
+                }
+
+                if (rigid_body.translation().y - position.translation.y).abs() > 2. {
+                    rigid_body.set_position(position, true);
+                }
+                
 
                 //println!("{:?} applied position change to x: {:?}, y: {:?}", sync_rigid_body_handle, position.translation.x, position.translation.y);
 
+            }
+
+            if let Some(body_type) = rigid_body_diff.body_type {
+
+                
+                rigid_body.set_body_type(body_type, true);
             }
 
             if let Some(mas) = rigid_body_diff.mass {
@@ -1157,7 +1195,9 @@ impl Diff for Space {
             }
 
             if let Some(velocity) = rigid_body_diff.velocity {
+
                 rigid_body.set_linvel(velocity, true);
+                
             }
 
             if let Some(angular_velocity) = rigid_body_diff.angular_velocity {
@@ -1185,6 +1225,8 @@ impl Diff for Space {
 
                     
                     collider.set_position(collider_diff.position.unwrap());
+
+                    collider.set_collision_groups(collider_diff.collision_groups.unwrap());
 
                     collider.set_shape(collider_diff.shape.clone().unwrap());
 
@@ -1215,6 +1257,10 @@ impl Diff for Space {
 
             if let Some(mass) = collider_diff.mass {
                 collider.set_mass(mass);
+            }
+
+            if let Some(collision_groups) = collider_diff.collision_groups {
+                collider.set_collision_groups(collision_groups);
             }
 
             if let Some(position) = &collider_diff.position {
