@@ -1,9 +1,13 @@
+use core::sync;
 use std::{collections::{HashMap, HashSet}, hash::Hash, time::{Duration, Instant}};
 
 use diff::{Diff, VecDiff};
+use macroquad::{color::WHITE, math::vec2, shapes::draw_circle};
 use nalgebra::{vector, Isometry2, Point2, Vector2};
 use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, Collider, ColliderBuilder, CollisionEvent, GenericJoint, GenericJointBuilder, ImpulseJoint, ImpulseJointHandle, InteractionGroups, RigidBody, RigidBodyBuilder, RigidBodyType, SharedShape}};
 use serde::{Deserialize, Deserializer, Serialize};
+
+use crate::{rapier_to_macroquad, time::Time};
 
 
 #[derive(Serialize, Deserialize, Hash, Clone, Copy, PartialEq, Eq, diff::Diff, Debug)]
@@ -608,6 +612,8 @@ impl Space {
         self.last_step = Instant::now();
 
         self.integration_parameters.dt = dt.as_secs_f32();
+
+        println!("{:?}", self.owned_rigid_bodies.len());
         
 
         for (rigid_body_handle, rigid_body) in self.sync_rigid_body_set.rigid_body_set.iter_mut() {
@@ -615,6 +621,7 @@ impl Space {
             let sync_rigid_body_handle = self.sync_rigid_body_set.reverse_sync_map.get(&rigid_body_handle).unwrap();
 
             if owned_rigid_bodies.contains(sync_rigid_body_handle) {
+                
                 continue;
             }
 
@@ -784,8 +791,11 @@ impl Diff for Space {
 
                         // we dont want to create a diff for a rigid body we dont control
                         if other.owned_rigid_bodies.contains(sync_rigid_body_handle) == false {
+
                             continue;
                         }
+
+    
                         
                         // we can just fetch the rigid body using the local handle i think it is faster this way
                         let rigid_body = self.sync_rigid_body_set.rigid_body_set.get(*local_rigid_body_handle).unwrap();
@@ -1142,6 +1152,14 @@ impl Diff for Space {
 
         for (sync_rigid_body_handle, rigid_body_diff) in &diff.sync_rigid_body_set.altered {
 
+            // this is important for when ownernship of objects are transferred between clients because we dont want to receive old updates 
+            if self.owned_rigid_bodies.contains(sync_rigid_body_handle) {
+                println!("skippin apply for a rigid body we own!");
+                // ACTUALLY MAYBE WE SHOULD JUST DO THIS FOR POSITION SO THAT WE CAN DO MANUAL VELOCITY OVERIDES FOR SHOOTING STUFF
+                continue;
+            }
+
+
             //println!("APPLY {:?}", sync_rigid_body_handle);
             let rigid_body = match self.sync_rigid_body_set.get_sync_mut(*sync_rigid_body_handle) {
                 Some(existing_rigid_body) => existing_rigid_body,
@@ -1170,14 +1188,17 @@ impl Diff for Space {
             };
 
             if let Some(position) = rigid_body_diff.position {
-                
-                if (rigid_body.translation().x - position.translation.x).abs() > 2. {
-                    rigid_body.set_position(position, true);
-                }
 
-                if (rigid_body.translation().y - position.translation.y).abs() > 2. {
-                    rigid_body.set_position(position, true);
-                }
+                
+                // println!("lionear: {:?}", rigid_body.linvel());
+                // if (position.translation.x - rigid_body.translation().x).abs() > rigid_body.linvel().x.abs() * 2. || (position.translation.y - rigid_body.translation().y).abs() > rigid_body.linvel().y.abs() * 2. {
+                    
+                // }
+
+                rigid_body.set_position(position, true);
+                
+
+                
                 
 
                 //println!("{:?} applied position change to x: {:?}, y: {:?}", sync_rigid_body_handle, position.translation.x, position.translation.y);
@@ -1211,6 +1232,12 @@ impl Diff for Space {
         // println!("map length: {:?}", self.sync_collider_set.sync_map.len());
         // COLLIDER SET
         for (sync_collider_handle, collider_diff) in &diff.sync_collider_set.altered {
+
+            if self.owned_colliders.contains(sync_collider_handle) {
+
+                println!("received update for object we own! {:?}", Time::now().timestamp);
+                continue;
+            }
             
             let collider = match self.sync_collider_set.get_sync_mut(*sync_collider_handle) {
                 Some(existing_collider) => {existing_collider},
