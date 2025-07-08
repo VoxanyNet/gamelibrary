@@ -109,6 +109,23 @@ pub fn log(message: &str) {
     web_sys::console::log_1(&message.into());
 }
 
+pub fn uuid_string() -> String {
+ 
+    // WTF
+    let mut buf = [0u8; 4];
+    getrandom::getrandom(&mut buf).unwrap();
+    u32::from_be_bytes(buf).to_string()
+
+}
+
+pub fn uuid_u32() -> u32 {
+ 
+    // WTF
+    let mut buf = [0u8; 4];
+    getrandom::getrandom(&mut buf).unwrap();
+    u32::from_be_bytes(buf)
+
+}
 
 pub fn macroquad_to_rapier(macroquad_coords: &Vec2) -> Vec2 {
 

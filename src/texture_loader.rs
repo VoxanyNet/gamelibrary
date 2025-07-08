@@ -32,20 +32,20 @@ impl TextureLoader {
         self.cache.get(texture_path).unwrap()
     }
 
-    pub fn get_blocking(&mut self, texture_path: &String) -> &Texture2D {
-        // this can probably be optimized with a match statement but i cant figure it out the borrowing stuff
-        if !self.cache.contains_key(texture_path) {
+    // pub fn get_blocking(&mut self, texture_path: &String) -> &Texture2D {
+    //     // this can probably be optimized with a match statement but i cant figure it out the borrowing stuff
+    //     if !self.cache.contains_key(texture_path) {
 
-            let texture = block_on(
-                load_texture(&texture_path)
-            ).unwrap();
+    //         let texture = block_on(
+    //             load_texture(&texture_path)
+    //         ).unwrap();
             
-            texture.set_filter(texture::FilterMode::Nearest);
+    //         texture.set_filter(texture::FilterMode::Nearest);
 
-            self.cache.insert(texture_path.clone(), texture);
+    //         self.cache.insert(texture_path.clone(), texture);
 
-        }
+    //     }
 
-        self.cache.get(texture_path).unwrap()
-    }
+    //     self.cache.get(texture_path).unwrap()
+    // }
 }

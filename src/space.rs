@@ -7,7 +7,7 @@ use nalgebra::{vector, Isometry2, Point2, Vector2};
 use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, Collider, ColliderBuilder, CollisionEvent, GenericJoint, GenericJointBuilder, ImpulseJoint, ImpulseJointHandle, InteractionGroups, RigidBody, RigidBodyBuilder, RigidBodyType, SharedShape}};
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::{rapier_to_macroquad, time::Time};
+use crate::{rapier_to_macroquad, time::Time, uuid_u32};
 
 
 #[derive(Serialize, Deserialize, Hash, Clone, Copy, PartialEq, Eq, diff::Diff, Debug)]
@@ -21,7 +21,7 @@ pub struct SyncRigidBodyHandle {
 impl SyncRigidBodyHandle {
     pub fn new() -> Self {
         Self {
-            id: uuid::Uuid::new_v4().as_u64_pair().0
+            id: uuid_u32() as u64
         }
     }
 }
@@ -37,7 +37,7 @@ pub struct SyncColliderHandle {
 impl SyncColliderHandle {
     pub fn new() -> Self {
         Self {
-            id: uuid::Uuid::new_v4().as_u64_pair().0
+            id: uuid_u32() as u64
         }
     }
 }
@@ -309,7 +309,7 @@ pub struct SyncImpulseJointHandle {
 impl SyncImpulseJointHandle {
     pub fn new() -> Self {
         Self {
-            id: uuid::Uuid::new_v4().as_u64_pair().0
+            id: uuid_u32() as u64
         }
     }
 }
@@ -448,7 +448,7 @@ pub struct Space {
     #[serde(skip)]
     pub event_handler: ChannelEventCollector,
     #[serde(skip)]
-    pub last_step: Instant,
+    pub last_step: web_time::Instant,
     #[serde(skip)]
     pub owned_rigid_bodies: Vec<SyncRigidBodyHandle>,
     #[serde(skip)]
@@ -500,7 +500,7 @@ impl<'de> Deserialize<'de> for Space {
             query_pipeline: helper.query_pipeline,
             event_handler,
             physics_hooks: (),
-            last_step: Instant::now(),
+            last_step: web_time::Instant::now(),
             owned_colliders: Vec::new(),
             owned_rigid_bodies: Vec::new(),
             owned_joints: Vec::new()
@@ -531,7 +531,7 @@ impl Clone for Space {
             physics_hooks: self.physics_hooks.clone(),
             event_handler,
             collision_recv,
-            last_step: Instant::now(),
+            last_step: web_time::Instant::now(),
             owned_colliders: self.owned_colliders.clone(),
             owned_rigid_bodies: self.owned_rigid_bodies.clone(),
             owned_joints: self.owned_joints.clone()
@@ -574,7 +574,7 @@ impl Space {
         let ccd_solver = CCDSolver::new();
         let query_pipeline = QueryPipeline::new();
         let physics_hooks = ();
-        let last_step = Instant::now();
+        let last_step = web_time::Instant::now();
 
         Self { 
             sync_rigid_body_set, 
@@ -609,7 +609,7 @@ impl Space {
         self.owned_colliders = owned_colliders.clone();
         self.owned_joints = owned_joints.clone();
 
-        self.last_step = Instant::now();
+        self.last_step = web_time::Instant::now();
 
         self.integration_parameters.dt = dt.as_secs_f32();
 

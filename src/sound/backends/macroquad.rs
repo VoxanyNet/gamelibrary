@@ -23,7 +23,7 @@ impl SoundManager for MacroquadSoundManager {
         self.listener_position = new_listener_position
     }
 
-    fn sync_sound(&mut self, sound_handle: &mut crate::sound::soundmanager::SoundHandle) {
+    async fn sync_sound(&mut self, sound_handle: &mut crate::sound::soundmanager::SoundHandle) {
 
         // only play the sound if the state is Playing
         match sound_handle.state {
@@ -40,9 +40,7 @@ impl SoundManager for MacroquadSoundManager {
         let sound = match self.sound_data.get(&sound_handle.file_path) {
             Some(sound) => sound,
             None => {
-                let sound = futures::executor::block_on(
-                    macroquad::audio::load_sound(&sound_handle.file_path)
-                ).unwrap();
+                let sound = macroquad::audio::load_sound(&sound_handle.file_path).await.unwrap();
 
                 self.sound_data.insert(sound_handle.file_path.clone(), sound);
 

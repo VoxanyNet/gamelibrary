@@ -29,7 +29,7 @@ impl SoundManager for EarsSoundManager {
         self.listener_position = new_listener_position
     }
 
-    fn sync_sound(&mut self, sound_handle: &mut SoundHandle) {
+    async fn sync_sound(&mut self, sound_handle: &mut SoundHandle) {
         // if the sound doesn't already exist on the client side we create it
         let client_sound = match self.sounds.get_mut(&sound_handle.id) {
             Some(client_sound) => {

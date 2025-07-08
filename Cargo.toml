@@ -10,21 +10,22 @@ diff-struct = "0.5.3"
 ewebsock = "0.7.0"
 fxhash = "0.2.1"
 lz4_flex = "0.11.3"
-macroquad = {git = "https://github.com/VoxanyNet/macroquad", rev = "73db4a93f90f41942995ef757499ed61f3ff6085", features = ["audio"]}
+macroquad = {git = "https://github.com/VoxanyNet/macroquad", rev = "499690e415414f86679c924a7db447115d645ab3", features = ["audio"]}
 nalgebra = {git = "https://github.com/VoxanyNet/nalgebra", rev = "c57d898ac19a01ac5ad2d6da5f98dea91257ac9e"}
-rand = "0.8.5"
 rapier2d = { git = "https://github.com/VoxanyNet/rapier", rev = "d2945de2055e11538e437246d5084463a9335a2e", features = ["serde-serialize"] }
 #rapier2d = {path = "../rapier/crates/rapier2d", features = ["serde-serialize"]}
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.128"
 serde_yaml = "0.9.34"
 tungstenite = "0.23.0"
-uuid = { version = "1.8.0", features = ["v4"] }
+#uuid = { version = "1.8.0", features = ["v4"] }
 web-sys = { version = "0.3.72", features = ["WebSocket", "console"] }
 wasm-bindgen-futures = "0.4.45"
 ears = {version = "0.8.0", optional = true}
 futures = "0.3.31"
 bincode = { version = "2.0.1", features = ["serde"] }
+getrandom ={ version = "*", features = ["js"]}
+web-time = "1.1.0"
 
 [features]
 3d-audio = ["ears"]

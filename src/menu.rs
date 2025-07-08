@@ -63,7 +63,7 @@ impl Menu {
         &self.items
     }
 
-    pub fn add_button(&mut self, text: String) {
+    pub async fn add_button(&mut self, text: String) {
 
         self.items.push(
             Button { 
@@ -80,7 +80,7 @@ impl Menu {
                 color: self.color,
                 font_size: 20,
                 font_path: self.font_path.clone(),
-                font: block_on(load_ttf_font(&self.font_path)).unwrap(),
+                font: load_ttf_font(&self.font_path).await.unwrap(),
                 hovered_color: self.hovered_color
             
             }
@@ -149,7 +149,7 @@ impl <'de> Deserialize<'de> for Button {
                 hovered_text_color: helper.hovered_text_color,
                 color: helper.color,
                 font_size: helper.font_size,
-                font: block_on(load_ttf_font(&helper.font_path)).unwrap(),
+                font: Font::default(), // this will need to be fixed
                 font_path: helper.font_path,
             }
         )
@@ -260,7 +260,7 @@ impl Diff for Button {
 
         if let Some(font_path) = &diff.font_path {
             self.font_path = font_path.clone();
-            self.font = block_on(load_ttf_font(font_path)).unwrap();
+            self.font = Font::default() // this needs to be fixed
         }
     }
 
@@ -273,7 +273,7 @@ impl Diff for Button {
             color: Color::identity(),
             hovered_color: Color::identity(),
             font_size: u16::identity(),
-            font: block_on(load_ttf_font("assets/fonts/CutePixel.ttf")).unwrap(),
+            font: Font::default(),
             font_path: String::default(),
             hovered_text_color: Color::identity()
         }
@@ -283,7 +283,7 @@ impl Diff for Button {
 
 impl Button {
 
-    pub fn new(
+    pub async fn new(
         text: String, 
         rect: Rect, 
         color: macroquad::color::Color, 
@@ -312,7 +312,7 @@ impl Button {
             hovered_text_color,
             color,
             font_size,
-            font: block_on(load_ttf_font(&font_path)).unwrap(),
+            font: load_ttf_font(&font_path).await.unwrap(),
             font_path: font_path
         }
     }

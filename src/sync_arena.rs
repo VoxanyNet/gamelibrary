@@ -10,6 +10,8 @@ use std::ops::{self};
 use std::slice;
 use std::vec;
 
+use crate::uuid_u32;
+
 const INVALID_U32: u32 = u32::MAX;
 
 /// The `Arena` allows inserting and removing elements that are referred to by
@@ -466,7 +468,7 @@ impl<T> SyncArena<T> {
                     Some(Index {
                         index: i,
                         generation: self.generation,
-                        sync_id: uuid::Uuid::new_v4().as_u64_pair().0,
+                        sync_id: uuid_u32() as u64,
                         synced: true
                     })
                 }
