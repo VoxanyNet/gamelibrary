@@ -37,6 +37,14 @@ where
         }
     }
 
+    pub fn state_mut(&mut self) -> &mut T {
+        &mut self.state
+    }
+
+    pub fn client_count(&self) -> usize {
+        self.clients.len()
+    }
+
     pub fn receive_updates(&mut self) {
 
         let mut client_index = 0;
