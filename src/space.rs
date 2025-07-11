@@ -1152,13 +1152,6 @@ impl Diff for Space {
 
         for (sync_rigid_body_handle, rigid_body_diff) in &diff.sync_rigid_body_set.altered {
 
-            // this is important for when ownernship of objects are transferred between clients because we dont want to receive old updates 
-            if self.owned_rigid_bodies.contains(sync_rigid_body_handle) {
-                println!("skippin apply for a rigid body we own!");
-                // ACTUALLY MAYBE WE SHOULD JUST DO THIS FOR POSITION SO THAT WE CAN DO MANUAL VELOCITY OVERIDES FOR SHOOTING STUFF
-                continue;
-            }
-
 
             //println!("APPLY {:?}", sync_rigid_body_handle);
             let rigid_body = match self.sync_rigid_body_set.get_sync_mut(*sync_rigid_body_handle) {
@@ -1187,6 +1180,7 @@ impl Diff for Space {
                 },
             };
 
+            
             if let Some(position) = rigid_body_diff.position {
 
                 
@@ -1195,12 +1189,18 @@ impl Diff for Space {
                     
                 // }
 
-                rigid_body.set_position(position, true);
-                
+                // this is important for when ownernship of objects are transferred between clients because we dont want to receive old updates 
+                if self.owned_rigid_bodies.contains(sync_rigid_body_handle) {
+                    println!("skippin apply position for a rigid body we own!");
+                    
+                    // // ACTUALLY MAYBE WE SHOULD JUST DO THIS FOR POSITION SO THAT WE CAN DO MANUAL VELOCITY OVERIDES FOR SHOOTING STUFF
+                    // continue;
+                }
 
+                else {
+                    rigid_body.set_position(position, true);
+                }
                 
-                
-
                 //println!("{:?} applied position change to x: {:?}, y: {:?}", sync_rigid_body_handle, position.translation.x, position.translation.y);
 
             }
