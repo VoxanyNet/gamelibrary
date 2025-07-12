@@ -7,7 +7,8 @@ use crate::sound::soundmanager::SoundManager;
 pub struct MacroquadSoundManager {
     sound_data: HashMap<String, Sound>,
     listener_position: [f32; 3],
-    sounds: HashSet<u64> // we cant actually update sounds but we can keep track of if we've played the sound yet
+    sounds: HashSet<u64>, // we cant actually update sounds but we can keep track of if we've played the sound yet
+    stupid_connection_fix: bool
 }
 
 impl SoundManager for MacroquadSoundManager {
@@ -15,8 +16,13 @@ impl SoundManager for MacroquadSoundManager {
         Self {
             sound_data: HashMap::new(),
             listener_position: [0., 0., 0.],
-            sounds: HashSet::new()
+            sounds: HashSet::new(),
+            stupid_connection_fix: false
         }
+    }
+
+    fn set_stupid_connection_fix(&mut self, toggle: bool) {
+        self.stupid_connection_fix = toggle;
     }
 
     fn update_listener_position(&mut self, new_listener_position: [f32; 3]) {
@@ -52,6 +58,12 @@ impl SoundManager for MacroquadSoundManager {
             looped: false,
             volume: 1., // change this to fall off the further away the sound is 
         };
+
+        // this is stupid
+        // i cant find a way to track if a sound is done playing with macroquad audio. so all the audio tha thas been played during the game will be played all at once when connecting. we set this value on the first frame to ignore any sounds played on the first frame
+        if self.stupid_connection_fix {
+            return ;
+        }
 
         play_sound(sound, sound_parameters);
         

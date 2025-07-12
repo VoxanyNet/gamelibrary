@@ -25,6 +25,9 @@ impl SoundManager for EarsSoundManager {
         }
     }
 
+    fn set_stupid_connection_fix(&mut self, toggle: bool) {
+        // we dont need to worry about this here :)
+    }
     fn update_listener_position(&mut self, new_listener_position: [f32; 3]) {
         self.listener_position = new_listener_position
     }
