@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, time::{SystemTime, UNIX_EPOCH}};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, time::{Instant, SystemTime, UNIX_EPOCH}};
 
 use diff::Diff;
 use fxhash::FxHashMap;
@@ -20,82 +20,10 @@ pub mod animation;
 pub mod animation_loader;
 pub mod swapiter;
 pub mod arenaiter;
-pub mod sound;
+//pub mod sound;
 pub mod sync_arena;
 pub mod font_loader;
-
-#[derive(Serialize, Deserialize)]
-pub struct SoundDetails {
-    path: String,
-    position: Vec2    
-}
-
-// we need to preload the sound cache with any sounds that we want to use BEFORE. this way we dont need to use async
-pub struct SoundManager {
-    sound_cache: HashMap<String, Sound>,
-    play_history: Vec<SoundDetails> // history of all the sound paths we have played. this is used in the diff step to determine which new sounds need to be relayed
-}
-
-pub struct SoundManagerDiff {
-    new_sounds: Option<Vec<SoundDetails>>
-}
-
-impl SoundManager {
-
-    pub fn new() -> Self {
-        Self {
-            sound_cache: HashMap::new(),
-            play_history: Vec::new(),
-        }
-    }
-
-    pub async fn load_sound(&mut self, path: &str) {
-
-        let sound = load_sound(&path).await.unwrap();
-
-        self.sound_cache.insert(path.to_string(), sound);
-    }
-    pub fn play_sound(&mut self, path: String, position: Vec2) {
-
-        let sound = self.sound_cache.get(&path).unwrap();
-
-        self.play_history.push(
-            SoundDetails {
-                path,
-                position,
-            }
-        );
-
-        play_sound(sound, PlaySoundParams::default());
-    }
-}
-
-impl Diff for SoundManager {
-    type Repr = SoundManagerDiff;
-
-    fn diff(&self, other: &Self) -> Self::Repr {
-        let mut diff = SoundManagerDiff {
-            new_sounds: None,
-        };
-
-        let new_entry_count = other.play_history.len() - self.play_history.len();
-
-        for index in other.play_history.len() - 1..(other.play_history.len() - 1) + new_entry_count {
-            println!("new sound at index: {}", index)
-        }
-
-        diff
-
-    }
-
-    fn apply(&mut self, diff: &Self::Repr) {
-        todo!()
-    }
-
-    fn identity() -> Self {
-        todo!()
-    }
-}
+pub mod sound_manager;
 
 pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
 
