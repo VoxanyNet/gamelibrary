@@ -30,7 +30,7 @@ impl PartialEq for SoundManager {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SoundManagerDiff {
     new_sounds: Option<Vec<SoundDetails>>
 }
