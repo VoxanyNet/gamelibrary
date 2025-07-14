@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SoundDetails {
     path: String,
     position: Vec2,
@@ -22,6 +22,12 @@ pub struct SoundManager {
     #[serde(skip)]
     listener_pos: Vec2
     
+}
+
+impl PartialEq for SoundManager {
+    fn eq(&self, other: &Self) -> bool {
+        self.play_history.len() == other.play_history.len()
+    }
 }
 
 #[derive(Debug)]
