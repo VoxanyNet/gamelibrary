@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use macroquad::audio::{play_sound, PlaySoundParams, Sound};
 
-use crate::sound::soundmanager::SoundManager;
+use crate::{log, sound::soundmanager::SoundManager};
 
 pub struct MacroquadSoundManager {
     sound_data: HashMap<String, Sound>,
@@ -17,7 +17,7 @@ impl SoundManager for MacroquadSoundManager {
             sound_data: HashMap::new(),
             listener_position: [0., 0., 0.],
             sounds: HashSet::new(),
-            stupid_connection_fix: false
+            stupid_connection_fix: true
         }
     }
 
@@ -31,6 +31,7 @@ impl SoundManager for MacroquadSoundManager {
 
     async fn sync_sound(&mut self, sound_handle: &mut crate::sound::soundmanager::SoundHandle) {
 
+        
         // only play the sound if the state is Playing
         match sound_handle.state {
             crate::sound::soundmanager::SoundState::Playing => {},
@@ -62,6 +63,7 @@ impl SoundManager for MacroquadSoundManager {
         // this is stupid
         // i cant find a way to track if a sound is done playing with macroquad audio. so all the audio tha thas been played during the game will be played all at once when connecting. we set this value on the first frame to ignore any sounds played on the first frame
         if self.stupid_connection_fix {
+            //log("skipping sound");
             return ;
         }
 

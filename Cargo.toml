@@ -34,3 +34,8 @@ web-time = "1.1.0"
 [[bin]]
 name = "test"
 path = "src/test/main.rs"
+
+
+[[bin]]
+name = "soundtest"
+path = "src/soundtest/main.rs"

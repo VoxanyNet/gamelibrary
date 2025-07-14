@@ -1059,6 +1059,7 @@ impl Diff for Space {
                     // we can remove this and just check the attributes individually
                     if other_joint != joint {
 
+                    
 
                         let mut impulse_joint_diff = ImpulseJointDiff {
                             local_anchor_1: None,

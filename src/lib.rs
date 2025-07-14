@@ -2,10 +2,12 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc, time::{SystemTime, UNIX_E
 
 use diff::Diff;
 use fxhash::FxHashMap;
-use macroquad::{camera::Camera2D, color::Color, input::mouse_position, math::{vec2, Rect, Vec2, Vec3}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}, window::screen_height};
+use macroquad::{audio::{load_sound, play_sound, PlaySoundParams, Sound}, camera::Camera2D, color::Color, input::mouse_position, math::{vec2, Rect, Vec2, Vec3}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}, window::screen_height};
 use rapier2d::prelude::ColliderHandle;
 use serde::{de::{self, MapAccess, Visitor}, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use space::{Space, SyncColliderHandle};
+
+use crate::time::Time;
 
 pub mod timeline;
 pub mod time;
@@ -22,6 +24,79 @@ pub mod sound;
 pub mod sync_arena;
 pub mod font_loader;
 
+#[derive(Serialize, Deserialize)]
+pub struct SoundDetails {
+    path: String,
+    position: Vec2    
+}
+
+// we need to preload the sound cache with any sounds that we want to use BEFORE. this way we dont need to use async
+pub struct SoundManager {
+    sound_cache: HashMap<String, Sound>,
+    play_history: Vec<SoundDetails> // history of all the sound paths we have played. this is used in the diff step to determine which new sounds need to be relayed
+}
+
+pub struct SoundManagerDiff {
+    new_sounds: Option<Vec<SoundDetails>>
+}
+
+impl SoundManager {
+
+    pub fn new() -> Self {
+        Self {
+            sound_cache: HashMap::new(),
+            play_history: Vec::new(),
+        }
+    }
+
+    pub async fn load_sound(&mut self, path: &str) {
+
+        let sound = load_sound(&path).await.unwrap();
+
+        self.sound_cache.insert(path.to_string(), sound);
+    }
+    pub fn play_sound(&mut self, path: String, position: Vec2) {
+
+        let sound = self.sound_cache.get(&path).unwrap();
+
+        self.play_history.push(
+            SoundDetails {
+                path,
+                position,
+            }
+        );
+
+        play_sound(sound, PlaySoundParams::default());
+    }
+}
+
+impl Diff for SoundManager {
+    type Repr = SoundManagerDiff;
+
+    fn diff(&self, other: &Self) -> Self::Repr {
+        let mut diff = SoundManagerDiff {
+            new_sounds: None,
+        };
+
+        let new_entry_count = other.play_history.len() - self.play_history.len();
+
+        for index in other.play_history.len() - 1..(other.play_history.len() - 1) + new_entry_count {
+            println!("new sound at index: {}", index)
+        }
+
+        diff
+
+    }
+
+    fn apply(&mut self, diff: &Self::Repr) {
+        todo!()
+    }
+
+    fn identity() -> Self {
+        todo!()
+    }
+}
+
 pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
 
     let mouse_pos = rapier_mouse_world_pos(camera_rect);
@@ -29,6 +104,16 @@ pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
     let distance_to_mouse = Vec2::new(
         mouse_pos.x - point.x,
         mouse_pos.y - point.y 
+    );
+
+    distance_to_mouse.x.atan2(distance_to_mouse.y)
+}
+
+pub fn get_angle_between_rapier_points(point_1: Vec2, point_2: Vec2) -> f32 {
+
+    let distance_to_mouse = Vec2::new(
+        point_2.x - point_1.x,
+        point_2.y - point_1.y 
     );
 
     distance_to_mouse.x.atan2(distance_to_mouse.y)
