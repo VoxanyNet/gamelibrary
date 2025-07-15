@@ -20,10 +20,10 @@ pub mod animation;
 pub mod animation_loader;
 pub mod swapiter;
 pub mod arenaiter;
-//pub mod sound;
+pub mod sound;
 pub mod sync_arena;
 pub mod font_loader;
-pub mod sound_manager;
+//pub mod sound_manager;
 
 pub fn get_angle_to_mouse(point: Vec2, camera_rect: &Rect) -> f32 {
 
