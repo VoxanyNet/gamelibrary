@@ -220,10 +220,12 @@ impl SyncColliderSet {
         sync_handle
     }
 
+    /// Get the collider using the client local handle
     pub fn get_local(&self, handle: ColliderHandle) -> Option<&Collider> {
         self.collider_set.get(handle)
     }
 
+    /// Get the collider using the client local handle
     pub fn get_local_mut(&mut self, handle: ColliderHandle) -> Option<&mut Collider> {
         self.collider_set.get_mut(handle)
     }

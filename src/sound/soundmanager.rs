@@ -11,6 +11,8 @@ pub trait SoundManager {
     async fn sync_sound(&mut self, sound_handle: &mut SoundHandle);
 
     fn set_stupid_connection_fix(&mut self, toggle: bool);
+
+    async fn load_sound(&mut self, sound_path: &str);
 }
 
 /// Synced structure for holding a sound's world position, volume, offset which will we sync with the client's client side sound

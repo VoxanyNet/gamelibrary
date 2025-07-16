@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use macroquad::audio::{play_sound, PlaySoundParams, Sound};
+use macroquad::audio::{load_sound, play_sound, PlaySoundParams, Sound};
 
 use crate::{log, sound::soundmanager::SoundManager};
 
@@ -10,7 +10,11 @@ pub struct MacroquadSoundManager {
     sounds: HashSet<u64>, // we cant actually update sounds but we can keep track of if we've played the sound yet
     stupid_connection_fix: bool
 }
-
+impl std::default::Default for MacroquadSoundManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl SoundManager for MacroquadSoundManager {
     fn new() -> Self where Self: Sized {
         Self {
@@ -27,6 +31,12 @@ impl SoundManager for MacroquadSoundManager {
 
     fn update_listener_position(&mut self, new_listener_position: [f32; 3]) {
         self.listener_position = new_listener_position
+    }
+
+    async fn load_sound(&mut self, sound_path: &str) {
+        if !self.sound_data.contains_key(sound_path) {
+            self.sound_data.insert(sound_path.to_string(), load_sound(sound_path).await.unwrap());
+        }
     }
 
     async fn sync_sound(&mut self, sound_handle: &mut crate::sound::soundmanager::SoundHandle) {
@@ -47,6 +57,8 @@ impl SoundManager for MacroquadSoundManager {
         let sound = match self.sound_data.get(&sound_handle.file_path) {
             Some(sound) => sound,
             None => {
+
+                log("had to load sound :(");
                 let sound = macroquad::audio::load_sound(&sound_handle.file_path).await.unwrap();
 
                 self.sound_data.insert(sound_handle.file_path.clone(), sound);
