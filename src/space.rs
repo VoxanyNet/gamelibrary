@@ -7,7 +7,7 @@ use nalgebra::{vector, Isometry2, Point2, Vector2};
 use rapier2d::{crossbeam::{self, channel::Receiver}, dynamics::{CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBodyHandle, RigidBodySet}, geometry::{ColliderHandle, ColliderSet, DefaultBroadPhase, NarrowPhase}, pipeline::{PhysicsPipeline, QueryPipeline}, prelude::{ChannelEventCollector, Collider, ColliderBuilder, CollisionEvent, GenericJoint, GenericJointBuilder, ImpulseJoint, ImpulseJointHandle, InteractionGroups, RigidBody, RigidBodyBuilder, RigidBodyType, SharedShape}};
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::{rapier_to_macroquad, time::Time, uuid_u32};
+use crate::{log, rapier_to_macroquad, time::Time, uuid_u32};
 
 
 #[derive(Serialize, Deserialize, Hash, Clone, Copy, PartialEq, Eq, diff::Diff, Debug)]
@@ -971,6 +971,7 @@ impl Diff for Space {
                             };
 
                             if other_collider.collision_groups() != collider.collision_groups() {
+                                
                                 collider_diff.collision_groups = Some(other_collider.collision_groups())
                             }
 
