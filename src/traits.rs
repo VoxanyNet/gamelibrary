@@ -1,6 +1,6 @@
 
 use macroquad::color::{Color, RED, WHITE};
-use macroquad::input::{self, is_key_down, is_mouse_button_down, is_mouse_button_pressed};
+use macroquad::input::{self, is_key_down, is_mouse_button_down, is_mouse_button_pressed, KeyCode};
 use macroquad::math::{vec2, Rect, Vec2};
 use macroquad::shapes::{draw_rectangle, draw_rectangle_ex, DrawRectangleParams};
 use macroquad::texture::{draw_texture_ex, DrawTextureParams};
@@ -129,23 +129,25 @@ pub trait HasPhysics {
 
         let increase_unit = 10.;
 
-        if is_key_down(input::KeyCode::Right) {
+        // press shift to scale uniformly
+        if is_key_down(input::KeyCode::Right) || (is_key_down(KeyCode::Up) && is_key_down(KeyCode::LeftShift)) {
             
             shape.half_extents.x += increase_unit;
+
             rigid_body.set_position(vector![rigid_body.position().translation.x + increase_unit, rigid_body.position().translation.y].into(), true)
         }
 
-        if is_key_down(input::KeyCode::Up) {
+        if is_key_down(input::KeyCode::Up) || (is_key_down(KeyCode::Right) && is_key_down(KeyCode::LeftShift)) {
             shape.half_extents.y += increase_unit;
             rigid_body.set_position(vector![rigid_body.position().translation.x, rigid_body.position().translation.y + increase_unit].into(), true)
         }
 
-        if is_key_down(input::KeyCode::Down) {
+        if is_key_down(input::KeyCode::Down) || (is_key_down(KeyCode::Left) && is_key_down(KeyCode::LeftShift))  {
             shape.half_extents.y -= increase_unit;
             rigid_body.set_position(vector![rigid_body.position().translation.x, rigid_body.position().translation.y - increase_unit].into(), true)
         }
 
-        if is_key_down(input::KeyCode::Left) {
+        if is_key_down(input::KeyCode::Left) || (is_key_down(KeyCode::Down) && is_key_down(KeyCode::LeftShift)) {
             shape.half_extents.x -= increase_unit;
             rigid_body.set_position(vector![rigid_body.position().translation.x - increase_unit, rigid_body.position().translation.y].into(), true)
         }
@@ -160,7 +162,7 @@ pub trait HasPhysics {
         
     }
 
-    async fn draw_outline(&self, space: &Space, outline_thickness: f32) {
+    fn draw_outline(&self, space: &Space, outline_thickness: f32) {
         let rigid_body = space.sync_rigid_body_set.get_sync(*self.rigid_body_handle()).unwrap();
         let collider = space.sync_collider_set.get_sync(*self.collider_handle()).unwrap();
 
@@ -174,15 +176,13 @@ pub trait HasPhysics {
         let draw_pos = rapier_to_macroquad(&vec2(position.x, position.y));
 
         // draw the outline
-        if *self.selected() {
-            macroquad::shapes::draw_rectangle_ex(
-                draw_pos.x,
-                draw_pos.y, 
-                (shape.half_extents.x * 2.) + outline_thickness, 
-                (shape.half_extents.y * 2.) + outline_thickness, 
-                DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: WHITE }
-            );
-        } 
+        macroquad::shapes::draw_rectangle_ex(
+            draw_pos.x,
+            draw_pos.y, 
+            (shape.half_extents.x * 2.) + outline_thickness, 
+            (shape.half_extents.y * 2.) + outline_thickness, 
+            DrawRectangleParams { offset: macroquad::math::Vec2::new(0.5, 0.5), rotation: rotation * -1., color: WHITE }
+        );
     }
 
     fn draw_hitbox(&self, space: &Space) {

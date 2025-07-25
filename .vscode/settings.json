@@ -1,4 +1,2 @@
 {
-    "rust-analyzer.cargo.features": ["3d-audio"],
-    "rust-analyzer.check.features": ["3d-audio"]
 }

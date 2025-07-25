@@ -6,7 +6,7 @@ use nalgebra::OPoint;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 
 
-#[derive(Serialize, Deserialize, Diff, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Diff, PartialEq, Clone, Debug)]
 #[diff(attr(
     #[derive(Serialize, Deserialize)]
 ))]
@@ -98,7 +98,7 @@ impl Menu {
     }
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub struct Button {
     pub rect: Rect,
     pub text: String,

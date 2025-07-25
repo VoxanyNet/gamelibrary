@@ -1,5 +1,5 @@
 use core::sync;
-use std::{collections::{HashMap, HashSet}, hash::Hash, time::{Duration, Instant}};
+use std::{collections::{HashMap, HashSet}, hash::Hash, time::{Duration, Instant}, u64};
 
 use diff::{Diff, VecDiff};
 use macroquad::{color::WHITE, math::vec2, shapes::draw_circle};
@@ -18,6 +18,14 @@ pub struct SyncRigidBodyHandle {
     id: u64
 }
 
+impl Default for SyncRigidBodyHandle {
+    fn default() -> Self {
+        Self {
+            id: u64::MAX,
+        }
+    }
+}
+
 impl SyncRigidBodyHandle {
     pub fn new() -> Self {
         Self {
@@ -32,6 +40,14 @@ impl SyncRigidBodyHandle {
 ))]
 pub struct SyncColliderHandle {
     id: u64
+}
+
+impl Default for SyncColliderHandle {
+    fn default() -> Self {
+        Self {
+            id: u64::MAX,
+        }
+    }
 }
 
 impl SyncColliderHandle {

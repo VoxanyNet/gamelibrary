@@ -36,6 +36,6 @@ name = "test"
 path = "src/test/main.rs"
 
 
-[[bin]]
-name = "soundtest"
-path = "src/soundtest/main.rs"
+# [[bin]]
+# name = "soundtest"
+# path = "src/soundtest/main.rs"
