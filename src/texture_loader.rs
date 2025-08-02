@@ -19,9 +19,12 @@ impl TextureLoader {
     pub fn new() -> Self {
         TextureLoader { cache: FxHashMap::default() }
     }
-    pub async fn get(&mut self, texture_path: &String) -> &Texture2D {
+    pub async fn get(&mut self, texture_path: impl ToString) -> &Texture2D {
+
+        let texture_path = texture_path.to_string();
+
         // this can probably be optimized with a match statement but i cant figure it out the borrowing stuff
-        if !self.cache.contains_key(texture_path) {
+        if !self.cache.contains_key(&texture_path) {
 
             let texture = load_texture(&texture_path).await.unwrap();
             
@@ -31,7 +34,7 @@ impl TextureLoader {
 
         }
 
-        self.cache.get(texture_path).unwrap()
+        self.cache.get(&texture_path).unwrap()
     }
 
     // pub fn get_blocking(&mut self, texture_path: &String) -> &Texture2D {

@@ -1,5 +1,5 @@
 use core::sync;
-use std::{collections::{HashMap, HashSet}, hash::Hash, time::{Duration, Instant}, u64};
+use std::{collections::{HashMap, HashSet}, hash::Hash, num::NonZero, time::{Duration, Instant}, u64};
 
 use diff::{Diff, VecDiff};
 use macroquad::{color::WHITE, math::vec2, shapes::draw_circle};
@@ -621,7 +621,7 @@ impl Space {
 
     
 
-    pub fn step(&mut self, owned_rigid_bodies: &Vec<SyncRigidBodyHandle>, owned_colliders: &Vec<SyncColliderHandle>, owned_joints: &Vec<SyncImpulseJointHandle>, dt: Duration) {
+    pub fn step(&mut self, owned_rigid_bodies: &Vec<SyncRigidBodyHandle>, owned_colliders: &Vec<SyncColliderHandle>, owned_joints: &Vec<SyncImpulseJointHandle>, secs_f32_dt: f32) {
 
         self.owned_rigid_bodies = owned_rigid_bodies.clone();
         self.owned_colliders = owned_colliders.clone();
@@ -629,9 +629,9 @@ impl Space {
 
         self.last_step = web_time::Instant::now();
 
-        self.integration_parameters.dt = dt.as_secs_f32();
+        self.integration_parameters.dt = secs_f32_dt;
 
-        println!("{:?}", self.owned_rigid_bodies.len());
+       // println!("{:?}", self.owned_rigid_bodies.len());
         
 
         for (rigid_body_handle, rigid_body) in self.sync_rigid_body_set.rigid_body_set.iter_mut() {
